@@ -13,3 +13,5 @@ My greatest piece of work is a rubik's cube solving robot
 it took 21 months and 9 versions
 
 I unfortunately do not have a github history for the code. It was all made in eclipse IDE
+
+lots of code was written on paper/notes app vis stylus pen - its the way I was first taught in 10th grade
