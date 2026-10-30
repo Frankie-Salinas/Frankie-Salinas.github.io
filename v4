@@ -1,0 +1,623 @@
+//UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB
+//UUUUUUURR RFRRRRRRR FFFFFFFFF DDDDDDDDL ULLLLLLLB BBBBBBBBB
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import java.util.*;
+public class Solve {
+	//constructor
+	public Solve() {
+		
+	}
+	//methods
+	public String turnFace(String cube, String turn) { // substring first letter of string =0, ending index not included 
+		if(turn == "u") { // uuuuuuuuu8 bbbrrrrrr17 rrrffffff26 ddddddddd35 fffllllll44 lllbbbbbb53 - white face turns clockwise
+			return cube.substring(6, 7) + cube.substring(3,4) + cube.substring(0,1) + cube.substring(7,8) + cube.substring(4,5) + cube.substring(1,2) + cube.substring(8,9) + cube.substring(5,6) + cube.substring(2,3)+ 
+					cube.substring(45, 48) + cube.substring(12, 18) + 
+					cube.substring(9, 12) + cube.substring(21, 27)+ 
+					cube.substring(27, 36)+ 
+					cube.substring(18, 21) + cube.substring(39, 45) + 
+					cube.substring(36,39) + cube. substring(48);
+		}
+		if(turn == "r") { // uufuufuuf8 rrrrrrrrr17 ffdffdffd26 ddbddbddb35 lllllllll44 ubbubbubb53 - right face turn clockwise
+			return cube.substring(0,2)+cube.substring(20, 21) + cube.substring(3,5) + cube.substring(23, 24) + cube.substring(6,8) + cube.substring(26,27) + 
+					cube.substring(15,16) + cube.substring(12,13) + cube.substring(9,10) + cube.substring(16,17) + cube.substring(13,14) + cube.substring(10,11) + cube.substring(17,18) + cube.substring(14,15) + cube.substring(11,12)+ 
+					cube.substring(18,20) + cube.substring(29,30) + cube.substring(21,23) + cube.substring(32,33) + cube.substring(24,26) + cube.substring(35,36) + 
+					cube.substring(27,29) + cube.substring(51,52) + cube.substring(30,32) + cube.substring(48,49) + cube.substring(33,35) + cube.substring(45,46) + 
+					cube.substring(36, 45) + 
+					cube.substring(8,9) + cube.substring(46,48) + cube.substring(5,6) + cube.substring(49,51) + cube.substring(2,3) + cube.substring(52);
+		}
+		if(turn == "f") { // uuuuuulll urrurrurr fffffffff rrrdddddd  lldlldlld bbbbbbbbb
+			return cube.substring(0,6) + cube.substring(44,45) + cube.substring(41,42) + cube.substring(38,39) + 
+					cube.substring(6,7) + cube.substring(10,12) + cube.substring(7,8) + cube.substring(13,15) + cube.substring(8,9) + cube.substring(16,18) + 
+					cube.substring(24, 25) + cube.substring(21,22) + cube.substring(18,19) + cube.substring(25,26) + cube.substring(22,23) + cube.substring(19,20) + cube.substring(26,27) + cube.substring(23,24) + cube.substring(20,21)+ 
+					cube.substring(15,16)+cube.substring(12,13)+cube.substring(9,10)+cube.substring(30,36)+// error fixed here!
+					cube.substring(36,38)+cube.substring(27,28)+cube.substring(39,41) + cube.substring(28,29)+cube.substring(42,44)+cube.substring(29,30) + 
+					cube.substring(45);
+		}
+		if(turn == "d") { // uuuuuuuuu rrrrrrfff fffffflll ddddddddd llllllbbb bbbbbbrrr
+			return cube.substring(0,15)+ // combining because its top and 2/3rds right are all the same 
+					cube.substring(24,27) + 
+					cube.substring(18,24) + cube.substring(42,45) +  //fffffflll
+					cube.substring(33, 34) + cube.substring(30,31) + cube.substring(27,28) + cube.substring(34,35) + cube.substring(31,32) + cube.substring(28,29) + cube.substring(35,36) + cube.substring(32,33) + cube.substring(29,30) + 
+					cube.substring(36,42) + cube.substring(51) + 
+					cube.substring(45,51)+cube.substring(15,18);
+		}
+		if(turn == "l") { // BUUBUUBUU RRRRRRRRR UFFUFFUFF FDDFDDFDD LLLLLLLLL BBDBBDBBD
+			return cube.substring(53) + cube.substring(1,3)+cube.substring(50,51)+cube.substring(4,6)+cube.substring(47,48)+cube.substring(7,9)+
+					cube.substring(9,18)+
+					cube.substring(0,1) + cube.substring(19,21) + cube.substring(3,4) + cube.substring(22,24) + cube.substring(6,7) + cube.substring(25,27)+
+					cube.substring(18,19) + cube.substring(28,30) + cube.substring(21,22) + cube.substring(31,33) + cube.substring(24,25) + cube.substring(34,36)+
+					cube.substring(42, 43) + cube.substring(39,40) + cube.substring(36,37) + cube.substring(43,44) + cube.substring(40,41) + cube.substring(37,38) + cube.substring(44,45) + cube.substring(41,42) + cube.substring(38,39)+
+					cube.substring(45,47) + cube.substring(33,34) + cube.substring(48,50) + cube.substring(30,31) + cube.substring(51,53) + cube.substring(27,28);
+		}
+		if(turn == "b") { // RRRUUUUUURRDRRDRRDFFFFFFFFFDDDDDDLLLULLULLULLBBBBBBBBB
+			return cube.substring(11,12) + cube.substring(14,15) + cube.substring(17,18) + cube.substring(3,9) + 
+					cube.substring(9,11) + cube.substring(35,36) + cube.substring(12,14) + cube.substring(34,35) + cube.substring(15,17) + cube.substring(33,34) +  
+					cube.substring(18,27) + 
+					cube.substring(27,33) + cube.substring(36,37) +  cube.substring(39,40) + cube.substring(42,43) +  
+					cube.substring(2,3) + cube.substring(37,39) +  cube.substring(1,2) + cube.substring(40,42) +  cube.substring(0,1) + cube.substring(43,45) + 
+					cube.substring(51, 52) + cube.substring(48,49) + cube.substring(45,46) + cube.substring(52,53) + cube.substring(49,50) + cube.substring(46,47) + cube.substring(53) + cube.substring(50,51) + cube.substring(47,48);
+		}
+		if(turn == "u'") { //
+			return cube.substring(2,3) + cube.substring(5,6) + cube.substring(8,9) + cube.substring(1,2) + cube.substring(4,5) + cube.substring(7,8) + cube.substring(0,1) + cube.substring(3,4) + cube.substring(6,7)+ 
+					cube.substring(18, 21) + cube.substring(12, 18) + 
+					cube.substring(36, 39) + cube.substring(21, 27)+ 
+					cube.substring(27, 36)+ 
+					cube.substring(45, 48) + cube.substring(39, 45) + 
+					cube.substring(9,12) + cube. substring(48);
+		}
+		if(turn == "r'") { 
+			return cube.substring(0,2)+cube.substring(51, 52) + cube.substring(3,5) + cube.substring(48, 49) + cube.substring(6,8) + cube.substring(45,46) + 
+					cube.substring(11, 12) + cube.substring(14,15) + cube.substring(17,18) + cube.substring(10,11) + cube.substring(13,14) + cube.substring(16,17) + cube.substring(9,10) + cube.substring(12,13) + cube.substring(15,16)+ 
+					cube.substring(18,20) + cube.substring(2,3) + cube.substring(21,23) + cube.substring(5,6) + cube.substring(24,26) + cube.substring(8,9) + 
+					cube.substring(27,29) + cube.substring(20,21) + cube.substring(30,32) + cube.substring(23,24) + cube.substring(33,35) + cube.substring(26,27) + 
+					cube.substring(36, 45) + 
+					cube.substring(35,36) + cube.substring(46,48) + cube.substring(32,33) + cube.substring(49,51) + cube.substring(29,30) + cube.substring(52);
+		}
+		if(turn == "f'") {
+			return cube.substring(0,6) + cube.substring(9,10) + cube.substring(12,13) + cube.substring(15,16) + 
+					cube.substring(29,30) + cube.substring(10,12) + cube.substring(28,29) + cube.substring(13,15) + cube.substring(27,28) + cube.substring(16,18) + 
+					cube.substring(20, 21) + cube.substring(23,24) + cube.substring(26,27) + cube.substring(19,20) + cube.substring(22,23) + cube.substring(25,26) + cube.substring(18,19) + cube.substring(21,22) + cube.substring(24,25)+ 
+					cube.substring(38,39)+cube.substring(41,42)+cube.substring(44,45)+cube.substring(30,36)+//
+					cube.substring(36,38)+cube.substring(8,9)+cube.substring(39,41) + cube.substring(7,8)+cube.substring(42,44)+cube.substring(6,7) + 
+					cube.substring(45);
+		}
+		if(turn == "d'") {
+			return cube.substring(0,15)+ // combining because its top and 2/3rds right are all the same -- error
+					cube.substring(51) + 
+					cube.substring(18,24) + cube.substring(15,18) +  //fffffflll
+					cube.substring(29,30) + cube.substring(32,33) + cube.substring(35,36) + cube.substring(28,29) + cube.substring(31,32) + cube.substring(34,35) + cube.substring(27,28) + cube.substring(30,31) + cube.substring(33,34) + 
+					cube.substring(36,42) + cube.substring(24,27) + 
+					cube.substring(45,51)+cube.substring(42,45);
+		}
+		if(turn == "l'") {
+			return cube.substring(18,19) + cube.substring(1,3)+cube.substring(21,22)+cube.substring(4,6)+cube.substring(24,25)+cube.substring(7,9)+
+					cube.substring(9,18)+
+					cube.substring(27,28) + cube.substring(19,21) + cube.substring(30,31) + cube.substring(22,24) + cube.substring(33,34) + cube.substring(25,27)+
+					cube.substring(53) + cube.substring(28,30) + cube.substring(50,51) + cube.substring(31,33) + cube.substring(47,48) + cube.substring(34,36)+
+					cube.substring(38, 39) + cube.substring(41,42) + cube.substring(44,45) + cube.substring(37,38) + cube.substring(40,41) + cube.substring(43,44) + cube.substring(36,37) + cube.substring(39,40) + cube.substring(42,43)+ 
+					cube.substring(45,47) + cube.substring(6,7) + cube.substring(48,50) + cube.substring(3,4) + cube.substring(51,53) + cube.substring(0,1);
+		}
+		if(turn == "b'") {
+			return cube.substring(42,43) + cube.substring(39,40) + cube.substring(36,37) + cube.substring(3,9) + 
+					cube.substring(9,11) + cube.substring(0,1) + cube.substring(12,14) + cube.substring(1,2) + cube.substring(15,17) + cube.substring(2,3) +  
+					cube.substring(18,27) + 
+					cube.substring(27,33) + cube.substring(17,18) +  cube.substring(14,15) + cube.substring(11,12) +  
+					cube.substring(33,34) + cube.substring(37,39) +  cube.substring(34,35) + cube.substring(40,42) +  cube.substring(35,36) + cube.substring(43,45) + 
+					cube.substring(47, 48) + cube.substring(50,51) + cube.substring(53) + cube.substring(46,47) + cube.substring(49,50) + cube.substring(52,53) + cube.substring(45,46) + cube.substring(48,49) + cube.substring(51,52);
+		}
+		if(turn == "r2") {
+			return cube.substring(0,2) + cube.substring(29,30) + cube.substring(3,5) + cube.substring(32,33) + cube.substring(6,8) + cube.substring(35,36) + 
+					cube.substring(17,18) + cube.substring(16,17) + cube.substring(15,16) + cube.substring(14,15) + cube.substring(13,14) + cube.substring(12,13) + cube.substring(11,12) + cube.substring (10,11) + cube.substring(9,10) + 
+					cube.substring(18,20) + cube.substring(51,52) + cube.substring(21,23) + cube.substring(48,49) + cube.substring(24,26) + cube.substring(45,46) + 
+					cube.substring(27,29) + cube.substring(2,3) + cube.substring(30,32) + cube.substring(5,6) + cube.substring(33,35) + cube.substring(8,9) + 
+					cube.substring(36,45) + 
+					cube.substring(26,27) + cube.substring(46,48) + cube.substring(23,24) + cube.substring(49,51) + cube.substring(20,21) + cube.substring(52);
+		}
+		if(turn == "l2") {
+			return cube.substring(27,28) + cube.substring(1,3) + cube.substring(30,31) + cube.substring(4,6) + cube.substring(33,34) + cube.substring(7,9) + 
+					cube.substring(9,18) + 
+					cube.substring(53) + cube.substring(19,21) + cube.substring(50,51) + cube.substring(22,24) + cube.substring(47,48) + cube.substring(25,27) + 
+					cube.substring(0,1) + cube.substring(28,30) + cube.substring(3,4) + cube.substring(31,33) + cube.substring(6,7) + cube.substring(34,36) + 
+					cube.substring(44,45) + cube.substring(43,44) + cube.substring(42,43) + cube.substring(41,42) + cube.substring(40,41) + cube.substring(39,40) + cube.substring(38,39) + cube.substring (37,38) + cube.substring(36,37) +
+					cube.substring(45,47) + cube.substring(24,25) + cube.substring(48,50) + cube.substring(21,22) + cube.substring(51,53) + cube.substring(18,19);
+		}
+		if(turn == "f2") {
+			return cube.substring(0,6) + cube.substring(29,30)+cube.substring(28,29)+cube.substring(27,28) + 
+					cube.substring(44,45) + cube.substring(10,12) + cube.substring(41,42) + cube.substring(13,15) + cube.substring(38,39) + cube.substring(16,18) + 
+					cube.substring(26,27) + cube.substring(25,26) + cube.substring(24,25) + cube.substring(23,24) + cube.substring(22,23) + cube.substring(21,22) + cube.substring(20,21) + cube.substring (19,20) + cube.substring(18,19) + 
+					cube.substring(8,9) + cube.substring(7,8) + cube.substring(6,7) + cube.substring(30,36) + 
+					cube.substring(36,38) + cube.substring(15,16) + cube.substring(39,41) + cube.substring(12,13) + cube.substring(42,44) + cube.substring(9,10) + 
+					cube.substring(45);
+		}
+		if(turn == "b2") {
+			return cube.substring(35,36) + cube.substring(34,35) + cube.substring(33,34) + cube.substring(3,9) + 
+					cube.substring(9,11) + cube.substring(42,43) + cube.substring(12,14) + cube.substring(39,40) + cube.substring(15,17) + cube.substring(36,37) + 
+					cube.substring(18,27) + 
+					cube.substring(27,33) + cube.substring(2,3) + cube.substring(1,2) + cube.substring(0,1) + 
+					cube.substring(17,18) + cube.substring(37,39) + cube.substring(14,15) + cube.substring(40,42) + cube.substring(11,12) + cube.substring(43,45) + 
+					cube.substring(53) + cube.substring(52,53) + cube.substring(51,52) + cube.substring(50,51) + cube.substring(49,50) + cube.substring(48,49) + cube.substring(47,48) + cube.substring (46,47) + cube.substring(45,46);	
+		}
+		if(turn == "u2") {
+			return cube.substring(8,9) + cube.substring(7,8) + cube.substring(6,7) + cube.substring(5,6) + cube.substring(4,5) + cube.substring(3,4) + cube.substring(2,3) + cube.substring(1,2) + cube.substring(0,1) + 
+					cube.substring(36,39) + cube.substring(12,18) + 
+					cube.substring(45,48) + cube.substring(21,27) + 
+					cube.substring(27,36) + 
+					cube.substring(9,12) + cube.substring(39,45) + 
+					cube.substring(18,21) + cube.substring(48);
+		}
+		if(turn == "d2") { // suspicious
+			return cube.substring(0,15) + 
+					cube.substring(42,45) +
+					cube.substring(18,24) + cube.substring(51) + 
+					cube.substring(35,36) + cube.substring(34,35) + cube.substring(33,34) + cube.substring(32,33) + cube.substring(31,32) + cube.substring(30,31) + cube.substring(29,30) + cube.substring(28,29) + cube.substring(27,28) + 
+					cube.substring(36,42) + cube.substring(15,18) + 
+					cube.substring(45,51) + cube.substring(24,27);
+		}
+		return cube;
+	}
+	public boolean isCornerOrientated(String cube) { // checks corner orientation provide white , yellow, green or blue index
+		byte[] indexNum = {0,2,6,8,27,29,33,35};
+		for(int i=0; i<indexNum.length; i++) {
+			char c = cube.charAt(indexNum[i]);
+			if(c != 'U' && c != 'D') {
+				return false;
+			}
+		}
+		return true;
+	}
+	public boolean isEdgeOrientated(String cube) { // checks edge orientation
+		byte[] indexNum2 = {1,3,5,7,28,30,32,34,21,23,48,50};
+		for(int i=0; i<indexNum2.length; i++) {
+			char c = cube.charAt(indexNum2[i]);
+			if(i<8) {
+				if(c != 'U' && c != 'D') {
+					return false;
+				}
+			} else {
+				if(c != 'F' && c != 'B') {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	public String[] pruneTableCreator2(int Depth, Map<String, Byte>DepthMap2, String cube) { // will create a table to get from state 2 to solved state
+		String[] table = new String[Depth]; //U, D, F2, B2, R2, L2
+		byte num =1;
+		for(int i=0; i<table.length; i+=8) {
+			table[i]=turnFace(table[i-(int)Math.pow(12,num)], "u");
+			DepthMap.put(table[i], num);
+			table[i+1]=turnFace(table[i+1-((int)Math.pow(12,num))], "d");
+			DepthMap.put(table[i+1], num);
+			table[i+2]=turnFace(table[i+2-((int)Math.pow(12,num))], "u'");
+			DepthMap.put(table[i+2], num);
+			table[i+3]=turnFace(table[i+3-((int)Math.pow(12,num))], "d'");
+			DepthMap.put(table[i+3], num);
+			table[i+4]=turnFace(turnFace(table[i+4-((int)Math.pow(12,num))], "r"), "r");
+			DepthMap.put(table[i+4], num);
+			table[i+5]=turnFace(turnFace(table[i+5-((int)Math.pow(12,num))], "l"), "l");
+			DepthMap.put(table[i+5], num);
+			table[i+6]=turnFace(turnFace(table[i+6-((int)Math.pow(12,num))], "f"), "f");
+			DepthMap.put(table[i+6], num);
+			table[i+7]=turnFace(turnFace(table[i+7-((int)Math.pow(12,num))], "b"), "b");
+			DepthMap.put(table[i+7], num);
+			if((double)num == i/8.0) {
+				num++;
+			}
+		}
+		return table;
+	}
+	
+	public String cornerBase3(String cube) { // checks corner orientation to get key for pattern with isCornerOrientated 
+		String strNum ="";
+		for(byte i=0; i<=35; i+=2) {
+			if(i == 4) {
+				i=6;
+			}
+			if(i == 10) {
+				i = 27;
+			}
+			if(i == 31) {
+				i = 33;
+			}
+			if(isCornerOrientated(cube, i) == 0) {
+				strNum = strNum + "0";
+			} else if(isCornerOrientated(cube, i) == 1) {
+				strNum = strNum + "1";
+			} else {
+				strNum = strNum + "2";
+			}
+		}
+		return strNum;
+	}
+	public String edgeBinary(String cube) {// checks edge orientation to get key for pattern with isEdgeOrientated
+		String strNum = "";
+		for(byte i=1; i<=35; i += 2) {
+			if (i==9) {
+				i=10;
+			}
+			if(i==18) {
+				i=39;
+			}
+			if(i==28) {
+				i=48;
+			}
+			if(i==36) {
+				i++;
+			}
+			if(i ==45) {
+				i++;
+			}
+			if(isEdgeOrientated(cube, i) == 0) {
+				strNum = strNum + "0";
+			} else {
+				strNum = strNum + "1";
+			}
+		}
+		return strNum;
+	}
+	public byte howDeepIsSolution(String[] table, String cube) { // makes number for checkForSolved2 method - not needed
+		byte num =0;
+		for(int i=0; i<table.length; i++) {
+			if(table[i].equals(cube)) {
+				if(i>table.length/12) { // 10 moves away
+					num=10;
+				} else if (i>table.length/12) { // 9 moves away
+					num =9;
+				} else if (i>table.length/12) { // 8 moves away
+					num =8;
+				} else { // 7 or less
+					num =7;
+				}
+			}
+		}
+		return num;
+	}
+
+	public ArrayList<String> beginPhase2(Map<String, Byte>DepthMap) {
+		byte num =0;
+		ArrayList<String> table = new ArrayList<>();
+		for(int i=0; i<Math.pow(8, 8); i+= 12) {
+			table.add(turnFace(table.get(i-(int)Math.pow(12,num)), "u"));
+			DepthMap.put(table.get(i), num);
+			table.add(turnFace(table.get(i+1-(int)Math.pow(12,num)), "r"));
+			DepthMap.put(table.get(i+1), num);
+			table.add(turnFace(table.get(i+2-(int)Math.pow(12,num)), "f"));
+			DepthMap.put(table.get(i+2), num);
+			table.add(turnFace(table.get(i+3-(int)Math.pow(12,num)), "d"));
+			DepthMap.put(table.get(i+3), num);
+			table.add(turnFace(table.get(i+4-(int)Math.pow(12,num)), "l"));
+			DepthMap.put(table.get(i+4), num);
+			table.add(turnFace(table.get(i+5-(int)Math.pow(12,num)), "b"));
+			DepthMap.put(table.get(i+5), num);
+			table.add(turnFace(table.get(i+6-(int)Math.pow(12,num)), "u'"));
+			DepthMap.put(table.get(i+6), num);
+			table.add(turnFace(table.get(i+7-(int)Math.pow(12,num)), "r'"));
+			DepthMap.put(table.get(i+7), num);
+			table.add(turnFace(table.get(i+8-(int)Math.pow(12,num)), "f'"));
+			DepthMap.put(table.get(i+8), num);
+			table.add(turnFace(table.get(i+9-(int)Math.pow(12,num)), "d'"));
+			DepthMap.put(table.get(i+9), num);
+			table.add(turnFace(table.get(i+10-(int)Math.pow(12,num)), "l'"));
+			DepthMap.put(table.get(i+10), num);
+			table.add(turnFace(table.get(i+11-(int)Math.pow(12,num)), "b'"));
+			DepthMap.put(table.get(i+11), num);
+			if((double)num == i/12.0) {
+				num++;
+			}
+			if(i == Math.pow(12, num)) {
+				for(int j=(i/12); j>0; j--) {
+					table.remove(j);
+				}
+			}
+		}
+		return table;
+	}
+	public ArrayList<String> completeState2(Map<String, Byte>DepthMap, Map<String, Byte>DepthMap2, int numMoves, String[] table, ArrayList<String> TableArrayList) { // tableArrayList has 12
+		ArrayList<String> stage2solution = new ArrayList<>();
+		byte[] numbers = new byte[11];
+		for(byte b: numbers) {
+			numbers[b] = b;
+		}
+		String[] moves = {"u", "r", "f", "d", "l", "b", "u'", "r'", "f'", "d'", "l'", "b'"};
+		for(String a : DepthMap2.keySet()) {
+			if(DepthMap.containsKey(a)) {
+				numMoves = DepthMap.get(a) + DepthMap2.get(a);
+				for(byte i=DepthMap.get(a); i>0; i /= 12) {
+					for(byte j=0; j>12; j++) {
+						if(TableArrayList.indexOf(a)%j == 0.0) {
+							stage2solution.add(moves[j]);
+						}
+					}
+					
+				}
+			}
+		}
+		return stage2solution;
+	}
+	//_________________________________________________________________________________________________________________________________________________________________________________________________________
+	public ArrayList<String> SolutionSet(String cube, String targetKey){ // threeThird.add(turnFace(threeThird.get(j), com[0])); 	threeThird.add(turnFace(threeThird.get(j+1), com[1])); -- until 7
+		ArrayList<String> Solution = new ArrayList<>();
+		ArrayList<String> oneThird = new ArrayList<>();
+		ArrayList<String> twoThird = new ArrayList<>();
+		ArrayList<String> threeThird = new ArrayList<>();
+		HashMap<String, Byte> threeThirdMap = new HashMap<>();
+		HashMap<String, Byte> oneThirdMap = new HashMap<>();
+		String[] com = {"u", "d" ,"u'", "d'", "r2", "l2", "f2", "b2"};
+		threeThird.add(targetKey);
+		oneThird.add(cube);
+		for(byte a=0; a<8; a++) {
+			threeThird.add(turnFace(targetKey, com[a]));
+			oneThird.add(turnFace(cube, com[a]));
+		}
+		for(byte i=2; i<=6; i++) { // create both the first and third tables and their maps. Will also remove any previous keys
+			for(int j=(int)Math.pow(8, i-2)+1; j<Math.pow(8, i-1); j+=8) {
+				for(byte k=0; k<8; k++) {
+					threeThird.add(turnFace(threeThird.get(j+k), com[k]));
+					if(!threeThirdMap.containsKey(threeThird.get(threeThird.size()-1))) {
+						threeThirdMap.put(threeThird.get(threeThird.size()-1), i);
+					} else {
+						threeThird.remove(threeThird.size()-1);
+					}
+					if(!oneThirdMap.containsKey(oneThird.get(oneThird.size()-1))) {
+						oneThirdMap.put(threeThird.get(threeThird.size()-1), i);
+					} else {
+						oneThird.remove(oneThird.size()-1);
+					}
+				}
+			}
+		}
+		
+		for(int i=0; i<threeThird.size(); i++) { // clear the array for more memory
+			threeThird.remove(i);
+		}
+		for(int b=1; b<oneThird.size();b++) {
+			twoThird.add(oneThird.get(b));
+			for(byte a=0; a<8; a++) {
+				twoThird.add(turnFace(twoThird.get(0), com[a]));
+			}
+			
+			for(byte i=2; i<=6; i++) {
+				for(int j=(int)Math.pow(8, i-2)+1; j<Math.pow(8, i-1); j+=8) {
+					for(byte k=0; k<8; k++) {
+						twoThird.add((turnFace(oneThird.get(j+k), com[k])));
+						if(threeThirdMap.containsKey(twoThird.get(twoThird.size()))) { // check for connection
+							for(byte x=2; x<=6; x++) { // if three third map has two third end we need to rebuild the map
+								for(int y=(int)Math.pow(8, i-2)+1; y<Math.pow(8, y-1); j+=8) {
+									for(byte z=0; z<8; z++) {
+										threeThird.add(turnFace(threeThird.get(y+z), com[z]));
+									}
+								}
+							}
+							for(int l = threeThird.size(); l>0; l /= 8) {
+								for(byte m=0; m<12; m++) {
+									if(threeThird.indexOf(l)%j == 0.0) {
+										Solution.add(com[m]);
+									}
+								}
+							}
+							for(int l = twoThird.size(); l>0; l /= 8) {
+								for(byte m=0; m<12; m++) {
+									if(twoThird.indexOf(l)%j == 0.0) {
+										Solution.add(com[m]);
+									}
+								}
+							}
+							for(int l = oneThird.size(); l>0; l /= 8) {
+								for(byte m=0; m<12; m++) {
+									if(oneThird.indexOf(l)%j == 0.0) {
+										Solution.add(com[m]);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return Solution;
+		
+	}
+	String twoThirdLastElement = "";
+	HashMap<String, String> Map = new HashMap<>();
+	public ArrayList<String> stage1Solution(String cube, String targetKey, ArrayList<String> Solution){ // we are making a new completion method because this will be bigger
+		long methodStartTime = System.nanoTime();
+		ArrayList<String> oneThird = new ArrayList<>();
+		ArrayList<String> twoThird = new ArrayList<>();
+		ArrayList<String> threeThird = new ArrayList<>();
+		ArrayList<ArrayList<String>> returnList = new ArrayList<>();
+		HashMap<String, String> threeThirdMap = new HashMap<>();
+		int oneIndex = 0;
+		
+		String[] com = {"u2", "d2", "r2", "l2", "f2", "b2", "u'", "d'", "r'", "l'", "f'", "b'", "u", "d", "r", "l", "f", "b"};
+		oneThird.add(cube);
+		for(byte a=0; a<com.length; a++) {
+			oneThird.add(turnFace(oneThird.get(0), com[a]));
+			Map.put(oneThird.get(oneThird.size()-1), com[a]);
+		}
+		oneThird.remove(0);
+		int num = 0;
+		while(num<5832) {
+			for(byte i=0; i<com.length; i++) {
+				oneThird.add(turnFace(oneThird.get(num), com[i]));
+				if(!(Map.containsKey(oneThird.get(oneThird.size()-1)))) {
+					Map.put(oneThird.get(oneThird.size()-1), Map.get(oneThird.get(num)) + com[i]); // put if absent - num replace oneThird.size()-1
+				} else {
+					oneThird.remove(oneThird.size()-1);
+				}
+				if(isEdgeOrientated(oneThird.get(oneThird.size()-1)) && isCornerOrientated(oneThird.get(oneThird.size()-1))) {
+					Solution.add(Map.get(oneThird.get(oneThird.size()-1)));
+					return Solution;
+				}
+			}	
+			num++;
+		}// --------------------------------------------------------------------------------------------- two third and threeThird
+		num = 0;
+		int num2 = 0;
+		int num3 =0;
+		oneIndex = oneThird.size()-1;
+		System.out.println(oneIndex);
+		long time = System.nanoTime();
+		while((System.nanoTime() - time)/1000000 < 470000) {// 47 seconds of search time
+			while(true) {
+				for(int j=oneThird.size()-1; j>0; j--) {
+					if(isEdgeOrientated(oneThird.get(j)) || isCornerOrientated(oneThird.get(j)))
+						oneIndex = j;
+				}
+				for(byte i=0; i<com.length; i++) {
+					if(!Map.containsKey(turnFace(oneThird.get(oneIndex), com[i])));
+						num3++;
+				}
+				if(num3>10)
+					break;
+				oneIndex =-19;
+			}
+			num3=0;
+			returnList = stage1Help(oneThird, oneIndex, cube); // threeThird replaced with onethird
+			twoThird = returnList.get(1);
+			Solution = returnList.get(0);
+			num2 = twoThird.size();
+			if(num2 == 1) {
+				// Solution.add(Map.get(twoThird.get(twoThird.size()-1))); &&&&& Solution.add(Map.get(oneThird.get(oneIndex)));
+				Solution.add(Map.get(twoThird.get(twoThird.size()-1)));
+				return Solution;
+			}
+			threeThird.add(twoThird.get(num2-1));
+			for(byte a=0; a<com.length; a++) {
+				threeThird.add(turnFace(threeThird.get(0), com[a]));
+				threeThirdMap.put(threeThird.get(threeThird.size()-1), com[a]);
+			}
+			threeThird.remove(0);
+			for(byte b=0; b<threeThird.size(); b++) {
+				if(isEdgeOrientated(threeThird.get(b)) && isCornerOrientated(threeThird.get(b))) {
+					Solution.add(Map.get(oneThird.get(oneIndex)) + com[b]); // mabye error
+					return Solution;
+				}
+			}
+			num =0; // now outside the loop
+			/*
+			while(num < -1) {
+				for(byte i=0; i<com.length; i++) {
+					threeThird.add(turnFace(threeThird.get(num), com[i])); // next line: num <18 ||
+					if(!(threeThirdMap.containsKey(threeThird.get(threeThird.size()-1))) || Map.containsKey(threeThird.get(threeThird.size()-1))) {
+						threeThirdMap.put(threeThird.get(threeThird.size()-1), threeThirdMap.get(threeThird.get(num)) + com[i]); // put if absent - replaced:  threeThirdMap.get(oneThird.get(num)) + com[i]);
+					} else {
+						threeThird.remove(threeThird.size()-1);
+					} // error here somewhere
+					if(isEdgeOrientated(threeThird.get(threeThird.size()-1)) && isCornerOrientated(threeThird.get(threeThird.size()-1))) {
+						Solution.add(Map.get(oneThird.get(oneIndex)));
+						Solution.add(Map.get(twoThird.get(num2)));
+						Solution.add(threeThirdMap.get(threeThird.get(threeThird.size()-1)));
+						return Solution;
+					}
+				}
+				num++;
+			}
+			*/
+			threeThird.clear();
+			oneIndex -= 19;
+			num2-=19;
+		}
+		return Solution;
+	}
+	// ---               ---                    ---                  ---                ---             ---              
+	public ArrayList<ArrayList<String>> stage1Help(ArrayList<String> oneThird, int oneIndex, String cube){
+		ArrayList<String> Solution = new ArrayList<>();
+		ArrayList<String> twoThird = new ArrayList<>();
+		ArrayList<ArrayList<String>> returnList = new ArrayList<>();
+		String[] com = {"u2", "d2", "r2", "l2", "f2", "b2", "u'", "d'", "r'", "l'", "f'", "b'", "u", "d", "r", "l", "f", "b"};
+		twoThird.add(oneThird.get(oneIndex)); // oneThird.get(oneIndex)                                               -------------------------------                          here here here here here here
+		for(byte a=0; a<com.length; a++) {
+			if(!Map.containsKey(turnFace(oneThird.get(oneIndex), com[a]))) {
+				twoThird.add(turnFace(twoThird.get(0), com[a]));
+				Map.put(twoThird.get(twoThird.size()-1), com[a]);
+			}
+		}
+		twoThird.remove(0);
+		for(byte b=0; b<twoThird.size(); b++) {
+			if(isEdgeOrientated(twoThird.get(b)) && isCornerOrientated(twoThird.get(b))) {
+				Solution.add(Map.get(oneThird.get(oneIndex)) + com[b]); // mabye error
+				returnList.add(Solution);
+				returnList.add(twoThird);
+				return returnList;
+			}
+		}
+		int num = 0;
+		while(num<5832) {
+			for(byte i=0; i<com.length; i++) {
+				twoThird.add(turnFace(twoThird.get(num), com[i]));
+				if((num<18) || !(Map.containsKey(twoThird.get(twoThird.size()-1)) || Map.containsKey(twoThird.get(twoThird.size()-1)))) { // )) || oneThirdMap.containsKey...
+					Map.put(twoThird.get(twoThird.size()-1), Map.get(twoThird.get(num)) + com[i]); // put if absent   num replaces
+				} else {
+					twoThird.remove(twoThird.size()-1);
+				}
+				if(isEdgeOrientated(twoThird.get(twoThird.size()-1)) && isCornerOrientated(twoThird.get(twoThird.size()-1))) {
+					System.out.println("after everything the cube should be: " + twoThird.get(twoThird.size()-1));
+					Solution.add(Map.get(twoThird.get(twoThird.size()-1)));
+					returnList.add(Solution);
+					returnList.add(twoThird);
+					return returnList;
+				}
+			}
+			num++;
+		}
+		returnList.add(Solution);
+		returnList.add(twoThird);
+		return returnList;
+	}
+
+	
+	
+	public static void main(String[] args) {
+		long startTime = System.nanoTime();
+		Scanner scanner = new Scanner(System.in);
+		Solve fido = new Solve();
+		String cube = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+		String targetKey = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+		String[] arr = {"u2", "d2", "r2", "l2", "f2", "b2", "u'", "d'", "r'", "l'", "f'", "b'", "u", "d", "r", "l", "f", "b"};
+		for(int i=0; i<8; i++) {
+			int x = (int)(Math.random()*18);
+			cube = fido.turnFace(cube, arr[x]);
+			System.out.print(arr[x] + " ");
+		}
+
+		if(cube.equals(targetKey)) {
+			System.out.println("True");
+		}
+		System.out.println(cube);
+		ArrayList<String> Solution = new ArrayList<>();
+		Solution = fido.stage1Solution(cube, targetKey, Solution);
+		System.out.println("Stage 1 solution: " + Solution);
+		System.out.println("Cube: " + cube);
+		//___________________________________________
+		
+		System.out.println("Took " + (System.nanoTime() - startTime)/1000000 + " ms");
+		
+	}
+}
+/*
+If the U/D color (white or yellow) is on the U or D face,  orientation = 0
+If the U/D color is on an F or B face,  orientation = 1
+If the U/D color is on an R or L face,  orientation = 2
+
+For U/D layer edges (those containing white or yellow):
+If the white/yellow color is on the U or D face  orientation = 0 (correct).
+If it’s on a side face (F, B, L, R)  orientation = 1 (flipped).
+
+For middle (Equator) edges (FR, FL, BL, BR):
+If the front/back color (Green/Blue) is on F or B  orientation = 0.
+If the F/B color is on U, D, L, or R  orientation = 1.
+ */
+
