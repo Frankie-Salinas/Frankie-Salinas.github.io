@@ -1,0 +1,496 @@
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+public class TestClass2{
+	public static HashMap<List<Integer>, String> map = new HashMap<>(5000, 0.99f); // for main method must be static
+	public static HashMap<List<Integer>, String> table = new HashMap<>(5000, 0.99f);
+	static long startTime = System.nanoTime();
+	static int[] EOarr = new int[2048*495];
+	static int[] COarr = new int[2187*495];
+	public int turn(int x, int times) {
+		int num = 0;
+		int passed = x;
+		int[] CCclockwise = {7,4,1,8,5,2,9,6,3};
+		int[] clockwise = {3,6,9,2,5,8,1,4,7};
+		if(times==0) {
+			return passed;
+		} else if(times>0) {
+			for(int i=0; i<times; i++) {
+				for(int j=0; j<clockwise.length; j++) {
+					num = (num*10) + passed % (int)Math.pow(10, clockwise[j])/((int)Math.pow(10, clockwise[j]-1));
+				}
+				if(times-1 > i) {passed = num; num = 0;}
+			}
+		} else {
+			for(int i=0; i>times; i--) {
+				for(int j=0; j<CCclockwise.length; j++) {
+					num = (num*10) + passed % (int)Math.pow(10, CCclockwise[j])/((int)Math.pow(10, CCclockwise[j]-1));
+				}
+				if(times+1 < i) {passed = num; num =0;}
+			}
+		} 
+		return num;
+	}
+	public static void waitHalfSecond() {
+		try {
+		    Thread.sleep(500);
+		} catch (InterruptedException e) {
+		    // Handle the exception if another thread interrupts the current thread while it's sleeping
+		    Thread.currentThread().interrupt(); // Restore the interrupted status
+		    System.out.println("Thread was interrupted: " + e.getMessage());
+		}
+	}
+	public static int middle(int x) {
+		return (x/10000)%10;
+	}
+	public int[] turnFace(int[] Ocube, String[] lastMove, boolean inPhaseTwo){
+		int[] rotateList = {0, -1, 2, 1};
+		int extraTemp = 0;
+		int[] arr = new int[18*6];
+		int index =0;
+		
+		int[] cube = new int[Ocube.length];
+		int[] temp = new int[Ocube.length];
+		List<Integer> oldkey = new ArrayList<>();
+		for(int i=0; i<Ocube.length; i++) {
+			cube[i] = Ocube[i];
+			temp[i] = Ocube[i];
+			oldkey.add(Ocube[i]);;
+		}
+		//get numbers for white side first--------------------------------------------------------------------------------------------------------------------------------------
+		temp[0] = turn(cube[0], 1);
+		temp[4] = cube[4]%1000000 + (cube[1]/1000000)*1000000;
+		temp[5] = cube[5];
+		for(int i=1; i<=3; i++) {
+			temp[i] = ((cube[i]%1000000) + (cube[i+1]/1000000)*1000000);
+		}
+		for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];} // line to add to arr
+		index +=6;
+		if(!inPhaseTwo) {
+			for(int i=0; i<=3; i++) { // rotates orange green red blue clockwise by re assigning sides of the cube to other faces
+				temp[0] = turn((cube[0]/100000000)*100000000 + (cube[0]/10000000%10)*10000000 + (cube[2]/1000000%10)*1000000 + (cube[0]/100000%10)*100000 + (cube[0]/10000%10)*10000 + (cube[2]/1000%10)*1000 + (cube[0]/100%10)*100 + (cube[0]/10%10)*10 + (cube[2]%10), rotateList[i]);
+				temp[1] = cube[1];
+				temp[2] = (cube[2]/100000000)*100000000 + (cube[2]/10000000%10)*10000000 + (cube[5]/1000000%10)*1000000 + (cube[2]/100000%10)*100000 + (cube[2]/10000%10)*10000 + (cube[5]/1000%10)*1000 + (cube[2]/100%10)*100 + (cube[2]/10%10)*10 + (cube[5]%10);
+				temp[3] = turn(cube[3], 1);
+				temp[4] = (cube[0]%10)*100000000 + (cube[4]/10000000%10)*10000000 + (cube[4]/1000000%10)*1000000 + (cube[0]/1000%10)*100000 + (cube[4]/10000%10)*10000 + (cube[4]/1000%10)*1000 + (cube[0]/1000000%10)*100 + (cube[4]/10%10)*10 + (cube[4]%10);
+				temp[5] = turn((cube[5]/10000000)*10000000 + (cube[4]/100%10)*1000000 + (cube[5]/10000%100)*10000 + (cube[4]/100000%10)*1000 + (cube[5]/10%100)*10 + (cube[4]/100000000%10), -1*rotateList[i]);
+				for (int j = 1; j < temp.length; j++) { // insertion sort to sort by middle number
+				    int key = temp[j];
+				    int keyDigit = middle(key);
+				    int k = j - 1;
+				    while (k >= 0 && middle(temp[k]) > keyDigit) {
+				        temp[k + 1] = temp[k];
+				        k--;
+				    }
+				    temp[k + 1] = key;
+				}
+				for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+				index +=6;
+				extraTemp = cube[1];
+				cube[1] = cube[2];
+				cube[2] = cube[3];
+				cube[3] = cube[4];
+				cube[4] = extraTemp;
+				cube[0] = turn(cube[0], 1);
+				cube[5] = turn(cube[5], -1);
+			}
+		}
+		// now for yellow side
+		temp[0] = cube[0];
+		temp[1] = cube[4]%1000 + (cube[1]/1000)*1000; // check please
+		temp[5] = turn(cube[5], 1);
+		for(int i=2; i<=4; i++) {
+			temp[i] = cube[i-1]%1000 + (cube[i]/1000)*1000;
+		}
+		for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+		index +=6;
+		//------------------------------------------------------------------------------------------------------------------- now for counterclockwise
+		temp[0] = turn(cube[0], -1); // white side
+		temp[1] = cube[1]%1000000 + cube[4]/1000000*1000000;
+		for(int i=2; i<=4; i++) {
+			temp[i] = cube[i]%1000000 + cube[i-1]/1000000*1000000;
+		}
+		temp[5] = cube[5]; // 4 sides
+		for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+		index +=6;
+		if(!inPhaseTwo) {
+			for(int i=0; i<=3; i++) {
+				temp[0] = turn((cube[0]/10000000)*10000000 + (cube[4]/100%10)*1000000 + (cube[0]/10000%100)*10000 + (cube[4]/100000%10)*1000 + (cube[0]/10%100)*10 + (cube[4]/100000000), rotateList[i]);
+				temp[1] = cube[1];
+				temp[2] = (cube[2]/10000000)*10000000 + (cube[0]/1000000%10)*1000000 + (cube[2]/10000%100)*10000 + (cube[0]/1000%10)*1000 + (cube[2]/10%100)*10 + cube[0]%10;
+				temp[3] = turn(cube[3], -1);
+				temp[4] = cube[5]%10*100000000 + (cube[4]/1000000%100)*1000000 + (cube[5]/1000%10)*100000 + (cube[4]/1000%100)*1000 + (cube[5]/1000000%10)*100 + cube[4]%100; // double check
+				temp[5] = turn((cube[5]/10000000)*10000000 + (cube[2]/1000000%10)*1000000 + (cube[5]/10000%100)*10000 + (cube[2]/1000%10)*1000 + (cube[5]/10%100)*10 + cube[2]%10, -1*rotateList[i]); // double check
+				for (int j = 1; j < temp.length; j++) {
+				    int key = temp[j];
+				    int keyDigit = middle(key);
+				    int k = j - 1;
+				    while (k >= 0 && middle(temp[k]) > keyDigit) {
+				        temp[k + 1] = temp[k];
+				        k--;
+				    }
+				    temp[k + 1] = key;
+				}
+				for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+				index +=6;
+				extraTemp = cube[1];
+				cube[1] = cube[2];
+				cube[2] = cube[3];
+				cube[3] = cube[4];
+				cube[4] = extraTemp;
+				cube[0] = turn(cube[0], 1);
+				cube[5] = turn(cube[5], -1);
+
+			}
+		}// now yellow
+		temp[0] = cube[0];
+		for(int i=1; i<=3; i++) {
+			temp[i] = (cube[i]/1000)*1000 + cube[i+1]%1000;
+		}
+		temp[4] = (cube[4]/1000)*1000 + cube[1]%1000;
+		temp[5] = turn(cube[5], -1);
+		for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+		index +=6;
+		//------------------------------------------------------------------------------------------------------------------- 2 turns
+		temp[0] = turn(cube[0], 2); // white side
+		temp[1] = (cube[3]/1000000)*1000000 + cube[1]%1000000;
+		temp[2] = (cube[4]/1000000)*1000000 + cube[2]%1000000;
+		temp[3] = (cube[1]/1000000)*1000000 + cube[3]%1000000;
+		temp[4] = (cube[2]/1000000)*1000000 + cube[4]%1000000;
+		temp[5] = cube[5];
+		for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+		index +=6;
+		for(int i=0; i<=3; i++) {
+			temp[0] = turn((cube[5])%10 + (cube[0]/10%100)*10 + (cube[5]/1000%10)*1000 + (cube[0]/10000%100)*10000 + (cube[5]/1000000%10)*1000000 + (cube[0]/10000000)*10000000, rotateList[i]);
+			temp[1] = cube[1];
+			temp[2] = (cube[4]/100000000) + (cube[2]/10%100)*10 + (cube[4]/100000%10)*1000 + (cube[2]/10000%100)*10000 + (cube[4]/100%10)*1000000 + (cube[2]/10000000)*10000000;
+			temp[3] = turn(cube[3], 2);
+			temp[4] = (cube[4]%100) + (cube[2]/1000000%10)*100 + (cube[4]/1000%100)*1000 + (cube[2]/1000%10)*100000 + (cube[4]/1000000%100)*1000000 + (cube[2]%10)*100000000;
+			temp[5] = turn((cube[0])%10 + (cube[5]/10%100)*10 + (cube[0]/1000%10)*1000 + (cube[5]/10000%100)*10000 + (cube[0]/1000000%10)*1000000 + (cube[5]/10000000)*10000000, -1*rotateList[i]);
+			for (int j = 1; j < temp.length; j++) { 
+			    int key = temp[j];
+			    int keyDigit = middle(key);
+			    int k = j - 1;
+			    while (k >= 0 && middle(temp[k]) > keyDigit) {
+			        temp[k + 1] = temp[k];
+			        k--;
+			    }
+			    temp[k + 1] = key;
+			}
+			for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+			index +=6;
+			extraTemp = cube[1];
+			cube[1] = cube[2];
+			cube[2] = cube[3];
+			cube[3] = cube[4];
+			cube[4] = extraTemp;
+			cube[0] = turn(cube[0], 1); // after turning both the white and yellow " cube " arrays, the square numbers will allign on both sides.
+			cube[5] = turn(cube[5], -1);
+		}
+
+		
+		// now yellow
+		temp[0] = cube[0];
+		temp[1] = cube[3]%1000 + (cube[1]/1000)*1000;
+		temp[2] = cube[4]%1000 + (cube[2]/1000)*1000;
+		temp[3] = cube[1]%1000 + (cube[3]/1000)*1000;
+		temp[4] = cube[2]%1000 + (cube[4]/1000)*1000;
+		temp[5] = turn(cube[5], 2);
+		for(int a=0; a<temp.length; a++) { arr[a+index] = temp[a];}
+		index +=6;
+		int length=0;
+		if(!inPhaseTwo) { length = arr.length;} else { length = arr.length-(8*6);}
+		for(int i=0; i<length; i+=6) {
+			List<Integer> key =  new ArrayList<>();
+			for(int j=0; j<6; j++) {
+				key.add(arr[i+j]);
+			}
+			if(!map.containsKey(key)) {
+				map.put(key, map.get(oldkey)+ " " +lastMove[i/6]);
+			} else {
+				for(int j=0; j<6; j++) {
+					arr[i+j] =0;
+				}
+			}
+		}
+		return arr;
+	}
+	public boolean pruneTable(int[] cube, boolean inPhaseTwo, int depth, String[] lastMove, int[] startCube){ // 2 maps, and the list should be the key for both
+		int[] passed = new int[6];
+		List<Integer> startCubeList = new ArrayList<>();
+		for(int i=0; i<startCube.length; i++) { startCubeList.add(startCube[i]);}
+		List<Integer> oldCube = new ArrayList<>();
+		Queue<List<Integer>> queue = new LinkedList<>();
+		int[] arr = new int[lastMove.length*6]; 
+		arr = turnFace(cube, lastMove, inPhaseTwo);
+		for(int i=0; i<lastMove.length*6; i+=6) {
+			List<Integer> startMap = new ArrayList<>();
+			for(int j=0; j<passed.length; j++) {
+				startMap.add(arr[i+j]);
+			} 
+			queue.offer(startMap);
+			table.put(startMap, lastMove[i/6]);  // last move has a length of 10
+		}
+		int pow = (int)Math.pow(10, depth); // switches between 10 and 18. 10= 111 ms, 18 = 413 ms
+		for(int i=0; i<pow; i++) {
+			List<Integer> nextQueue = queue.remove();
+			for(int a=0; a<passed.length; a++){
+				passed[a] = nextQueue.get(a);
+				oldCube.add(passed[a]);
+			} 	
+			arr = turnFace(passed, lastMove, inPhaseTwo);
+			for(int j=0; j<lastMove.length*6; j+=6) {
+				if(arr[j] != 0) { // new
+					List<Integer> nextCube = new ArrayList<>();
+					for(int k=0; k<passed.length; k++) {
+						nextCube.add(arr[j+k]);
+					}
+					if(!table.containsKey(nextCube)) {
+						table.put(nextCube, lastMove[j/6] + " " +table.get(oldCube)); // slow line`
+						if(startCubeList.equals(nextCube)) { 
+							System.out.println("Solution: " + table.get(nextCube)); 
+							System.out.println("Took " + (System.nanoTime()-startTime)/1000000 + " ms"); 
+							Runtime runtime = Runtime.getRuntime();
+							long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+							System.out.println("Used " + usedMemory/1000000 + " MB"); return true;}
+						List<Integer> list = new ArrayList<>();
+						for(int k=0; k<6; k++) {
+							list.add(arr[j+k]);
+						}
+						queue.offer(list);
+					}
+				}
+			}
+			oldCube.clear();// arr used to be called list, and passed used to be called arr. here used to be list.clear(); (next line)
+		}
+		
+		queue.clear();
+		map.clear();
+		return false;
+	}
+
+	
+	public boolean inPhaseTwo(int[] arr) {
+		int[] pow = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000};
+		int Face =0;
+		int num =0;
+		for(int i=0; i<arr.length; i++) {
+			if(arr[i]/10000%10 == 1) {
+				Face = arr[i];
+				i=arr.length; // break
+			}
+		}
+		for(int i=0; i<9; i++) {
+			num = (Face/pow[i])%10;
+			if(num != 1 && num != 6) {
+				return false;
+			}
+		}
+		for(int i=0; i<arr.length; i++) {
+			if(arr[i]/10000%10 == 6) {
+				Face = arr[i];
+				i=arr.length; // break
+			}
+		}
+		for(int i=0; i<9; i++) {
+			num = (Face/(int)pow[i])%10;
+			if(num != 1 && num != 6) {
+				return false;
+			}
+		}
+		for(int i=0; i<arr.length; i++) {
+			if(arr[i]/10000%10 == 3) {
+				Face = arr[i];
+				i=arr.length; // break
+			}
+		}
+		if((Face/1000)%10 != 3 && (Face/1000)%10 != 5) {
+			return false;
+		}
+		if((Face/100000)%10 != 3 && (Face/100000)%10 != 5) {
+			return false;
+		}
+		for(int i=0; i<arr.length; i++) {
+			if(arr[i]/10000%10 == 5) {
+				Face = arr[i];
+				i=arr.length; // break
+			}
+		}
+		if((Face/1000)%10 != 3 && (Face/1000)%10 != 5) {
+			return false;
+		}
+		if((Face/100000)%10 != 3 && (Face/100000)%10 != 5) {
+			return false;
+		}
+		return true;
+	}
+
+	
+	public static void main(String[] args) {
+		TestClass2 fido = new TestClass2();
+		Runtime runtime = Runtime.getRuntime();
+		int[] solved = {111111111, 222222222, 333333333, 444444444, 555555555, 666666666};
+		List<Integer> solution = new ArrayList<>();
+		for(int a:solved) { solution.add(a);} // make a list and a array of the solved cube
+		String[] moves = {"u", "r", "b", "l", "f", "d", "u'", "r'", "b'", "l'", "f'", "d'", "u2", "r2", "b2", "l2", "f2", "d2"}; //must be string for prime moves
+		String[] moves2 = {"u", "d", "u'", "d'", "u2", "r2", "b2", "l2", "f2", "d2"};
+		String[] moves3 = {"u'", "d'", "u", "d", "u2", "r2", "b2", "l2", "f2", "d2"};
+		String[] moves4 = {"u'", "r'", "b'", "l'", "f'", "d'", "u", "r", "b", "l", "f", "d", "u2", "r2", "b2", "l2", "f2", "d2"};
+		int[] nextCube = {333111333, 636222222, 444636636, 151444444, 222151151, 565565565}; // 333111333, 636222222, 444636636, 151444444, 222151151, 565565565
+		int[] cube = {333111333, 636222222, 444636636, 151444444, 222151151, 565565565}; // 511311253, 221424444, 544331551, 122542522, 336551333, 664666666 - test
+		boolean phaseTwo = false;
+		int[] arr = fido.turnFace(nextCube, moves, phaseTwo);
+		fido.pruneTable(solved, !phaseTwo, 3, moves3, nextCube);
+		boolean bool = fido.pruneTable(solved, phaseTwo, 3, moves4, nextCube);
+		if(bool) {return;}
+		map.clear();
+		Queue<Integer> queue = new LinkedList<>();
+		for(int i=0; i<arr.length; i+=6) {
+			List<Integer> startMap = new ArrayList<>();
+			for(int j=0; j<6; j++) {
+				startMap.add(arr[i+j]);
+				queue.add(arr[i+j]);
+			}
+			map.put(startMap, moves[i/6]);
+		}
+		/*
+		for(int i=0; i<9; i++) {
+			nextDepth = fido.turnFace(cube, moves, false);
+			int rand = (int)(Math.random()*18);
+			System.out.println();
+			System.out.print(moves[rand] + ": ");
+			rand *=6;
+			for(int j=0; j<6; j++) {
+				cube[j] = nextDepth.get(rand+j);
+				System.out.print(cube[j] + ", ");
+			}
+		}
+		*/
+		int a =0;
+		while(!phaseTwo) {
+			arr = fido.turnFace(nextCube, moves, phaseTwo); // returns 108 integers
+			for(int i=0; i<arr.length; i+=6) {
+				if(arr[i] != 0) {
+					List<Integer> list = new ArrayList<>();
+					for(int j=0; j<6; j++) {
+						a = arr[i+j];
+						list.add(a);
+						nextCube[j] = a;
+					}
+					if(fido.inPhaseTwo(nextCube)) { // Arrays.equal(solved, nextCube) for completely solved cube. This like checks for phase 2
+						phaseTwo = true;
+						i=arr.length;
+						System.out.println("Phase 1 Took " + (System.nanoTime()-startTime)/1000000.0 + " ms");
+					} else { 
+						for(int j=0; j<6; j++) { 
+							queue.offer(arr[i+j]);
+						}
+					}
+				}
+			}
+			if(!phaseTwo) {for(int i=0; i<nextCube.length; i++) { nextCube[i] = queue.remove();}} else { queue.clear();}
+		}
+		boolean isSolutionFonud = false;
+		while(!isSolutionFonud) {
+			arr = fido.turnFace(nextCube, moves2, phaseTwo); // returns 108 integers
+			for(int i=0; i<arr.length; i+=6) {
+				if(arr[i] !=0) {
+					List<Integer> list = new ArrayList<>();
+					for(int j=0; j<6; j++) {
+						a = arr[i+j];
+						list.add(a);
+						nextCube[j] = a;
+					}
+					if(table.containsKey(list)) { // Arrays.equal(solved, nextCube) for completely solved cube. This like checks for phase 2
+						String str = map.get(list) + " " + table.get(list);
+						for(int j=0; j<str.length()-2; j++) {
+							if(str.charAt(j)==str.charAt(j+2) && str.charAt(j) != ' ' && str.charAt(j) != '2') {
+								str = str.substring(0, j) + str.charAt(j) + "2" + str.substring(j+3);
+							}
+						}
+						System.out.println("Solution: " + str);
+						isSolutionFonud = true;
+						i=arr.length;
+					} else { 
+						for(int j=0; j<6; j++) { 
+							queue.offer(arr[i+j]);
+						}
+					}
+					
+				}
+			}
+			if(queue.size() != 0) {
+				for(int i=0; i<nextCube.length; i++) { nextCube[i] = queue.remove();}
+			}
+		}
+		System.out.println("Took " + (System.nanoTime()-startTime)/1000000.0 + " ms");
+		long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+		System.out.println("Used " + usedMemory/1000000 + " MB");
+		/*
+		for(int i=0; i<solution.size(); i++) {
+			if(i%6==0) {
+				System.out.println();
+				System.out.print(moves[i/6] + ": ");
+			}
+			System.out.print(solution.get(i) + " ");
+		}
+		System.out.println();
+		---------------------------------------------------------
+		for(int i=0; i<7; i++) {
+			nextDepth = fido.turnFace(cube, map, moves);
+			int rand = 3;
+			System.out.print(moves[rand] + ": ");
+			rand *=6;
+			for(int j=0; j<6; j++) {
+				cube[j] = nextDepth.get(rand+j);
+				System.out.print(cube[j] + " ");
+			}
+			System.out.println();
+			rand =9;
+			System.out.print(moves[rand] + ": ");
+			rand *= 6;
+			for(int j=0; j<6; j++) {
+				cube[j] = nextDepth.get(rand+j);
+				System.out.print(cube[j] + " ");
+			}
+			System.out.println();
+		}
+		
+			
+			
+		If the U/D color (white or yellow) is on the U or D face,  orientation = 0
+		If the U/D color is on an F or B face,  orientation = 1
+		If the U/D color is on an R or L face,  orientation = 2
+
+		For U/D layer edges (those containing white or yellow):
+		If the white/yellow color is on the U or D face  orientation = 0 (correct).
+		If it’s on a side face (F, B, L, R)  orientation = 1 (flipped).
+
+		For middle (Equator) edges (FR, FL, BL, BR):
+		If the front/back color (Green/Blue) is on F or B  orientation = 0.
+		If the F/B color is on U, D, L, or R  orientation = 1.
+		
+				for(int i=0; i<7; i++) {
+			nextDepth = fido.turnFace(cube, map, moves);
+			int rand = (int)(Math.random()*18);
+			System.out.print(moves[rand] + ") ");
+			rand *=6;
+			for(int j=0; j<6; j++) {
+				cube[j] = nextDepth.get(rand+j);
+				System.out.print(cube[j] + " ");
+			}
+			System.out.println();
+		}
+f2: 111111666, 224224224, 333333333, 244244244, 555555555, 111666666, 
+d: 111111666, 224224555, 333333224, 244244333, 555555244, 661661661, 
+f': 111111223, 226226556, 334332332, 144644633, 555555244, 445661661, 
+d2: 111111223, 226226633, 334332244, 144644556, 555555332, 166166544, 
+u2: 322111111, 144226633, 555332244, 226644556, 334555332, 166166544, 
+b2: 445111111, 644426633, 555332244, 226642551, 233555433, 166166223, 
+d': 445111111, 644426433, 555332633, 226642244, 233555551, 211266366, 
+		 */
+	}
+}
