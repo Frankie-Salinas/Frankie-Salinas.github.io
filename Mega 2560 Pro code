@@ -1,0 +1,842 @@
+//9-26-2026
+//DRV8833 motor controller with in1-4. 
+//STEPPERONLINE Nema 17 Stepper Motor 26Ncm(36.8oz.in) 12V 0.4A 3D Printer CNC
+#include <SoftwareWire.h> // this library deals with SDA/SCL microcontroller pins. The designated pins on the MEGA2560 pro are occupied by motor drivers, so this sets custome SDA/SCL pins
+#define TCAADDR 0x70
+byte PCA_ADDRESS = 0x70;
+int SDA_PIN = 33;
+int SCL_PIN = 32;
+SoftwareWire myI2C(SDA_PIN, SCL_PIN);
+// 6 pieces of data that the java program needs
+int cornerPermutation[8];
+int edgePermutation[12];
+int slice[4];
+int cornerOrientation[8];
+int edgeFlip[12];
+int slicePosition[4];
+// a switch prevents the solver from immediately starting to scan colors
+int startButton = 2;
+String colors[6] = {"White", "Yellow", "Red", "Orange", "Green", "Blue"}; // color order
+String moves[] = {"U", "B", "F", "D", "L", "R"}; // sides
+String moves2[] = {"U2", "B2", "F2", "D2", "L2", "R2"};
+String movesPrime[] = {"U'", "B'", "F'", "D'", "L'", "R'"};
+
+int pins[6][4] = {{6,8,14,16},{21,23,29,31},{7,9,15,17},{36,38,44,46},{53,51,52,50},{37,39,45,47}}; // ubfdlr
+
+/*
+int colorArr[6][4] = {
+  {147, 135, 85,  380}, // [0] white
+  {160, 148, 45,  390}, // [1] yellow
+  {90,  22,  17,  130}, // [2] red
+  {150, 50,  27,  250}, // [3] orange
+  {37,  67,  23,  125}, // [4] green
+  {24,  31,  26,  90}   // [5] blue
+};
+*/
+// defined color values
+int colorArr[6][4] = {
+  {500,514,417,1330}, // [0] white
+  {520,665,273,1465}, // [1] yellow
+  {393,279,198,866}, // [2] red
+  {625,365,211,1200}, // [3] orange
+  {184,313,160,680}, // [4] green
+  {114,230,199,561}   // [5] blue
+};
+
+int cube[54] = {};
+float waitTime = 4;
+#define TCS_ADDRESS 0x29
+
+void writeRegister(uint8_t reg, uint8_t value) {
+  myI2C.beginTransmission(TCS_ADDRESS);
+  myI2C.write(0x80 | reg);
+  myI2C.write(value);
+  myI2C.endTransmission();
+}
+uint8_t readRegister(uint8_t reg) {
+  myI2C.beginTransmission(TCS_ADDRESS);
+  myI2C.write(0x80 | reg);
+  myI2C.endTransmission();
+
+  myI2C.requestFrom((uint8_t)TCS_ADDRESS, (uint8_t)1);
+  if (myI2C.available()) {
+    return myI2C.read();
+  }
+  return 0;
+}
+uint16_t read16(uint8_t reg) {
+  myI2C.beginTransmission(TCS_ADDRESS);
+  myI2C.write(0x80 | reg);
+  myI2C.endTransmission();
+
+  myI2C.requestFrom((uint8_t)TCS_ADDRESS, (uint8_t)2);
+  if (myI2C.available() >= 2) {
+    uint16_t low = myI2C.read();
+    uint16_t high = myI2C.read();
+    return (high << 8) | low;
+  }
+  return 0;
+}
+
+
+
+
+void setup() {
+  Serial.begin(9600);
+  delay(100);
+  
+  myI2C.begin(); // starts the designated pins as I2C for the SDA/SCL
+  delay(100);
+
+  // Initialize motor pins and start button
+  for(int i = 0; i < 6; i++) {
+    for(int j = 0; j < 4; j++) {
+      pinMode(pins[i][j], OUTPUT);
+    }
+  }
+  pinMode(startButton, INPUT_PULLUP);
+
+  // Initialize each sensor connected to channels 0 through 3
+  for (int ch = 0; ch < 4; ch++) {
+    tcaselect(ch);
+    delay(10);
+    
+    // Power on each sensor
+    writeRegister(0x00, 0x01);
+    delay(3);
+    writeRegister(0x00, 0x03);
+    writeRegister(0x01, 0xEB);
+    writeRegister(0x0F, 0x01); 
+  }
+}
+void loop() {
+  scanCube(); // Star the process
+}
+void tcaselect(uint8_t i) { // this method checks to see if you are looking for a valid channel. If so, it turns the number into bitwise shift operator to tell the chip to open the channel
+  if (i > 7) return;
+  myI2C.beginTransmission(TCAADDR);
+  myI2C.write(1 << i);
+  myI2C.endTransmission();
+}
+void selectChannel(byte channel) { // This function does the same as the previous method, but specifically for the PCA-branded pca9548A chip
+  if (channel > 7) {
+    return;
+  }
+  myI2C.beginTransmission(PCA_ADDRESS);
+  myI2C.write(1 << channel);
+  byte error = myI2C.endTransmission();
+  if (error != 0) {
+    Serial.print("PCA9548A error: ");
+    Serial.println(error);
+  }
+}
+void scanChannel(byte channel) { //this method loops through every possible I2C address (126 of them) and attempts a transmission. If a sensor responds, it retusn no error.
+  Serial.print("Scanning channel ");
+  Serial.println(channel);
+  selectChannel(channel);
+  delay(10);
+  for (byte address = 1; address < 127; address++) {
+    myI2C.beginTransmission(address);
+    byte error = myI2C.endTransmission();
+    if (error == 0) {
+      if (address < 16) {
+        Serial.print("0");
+      }
+      Serial.println(address, HEX); // turns address into hex(base 16)
+    }
+  }
+}
+
+
+
+
+int permutationToInt(int perm[], int size) {
+  int permValue = 0;
+  for (int i = 0; i < size; i++) {
+    int smallerCount = 0;
+    for (int j = i + 1; j < size; j++) {
+      if (perm[j] < perm[i]) smallerCount++;
+    }
+    int fact = 1;
+    for (int k = 1; k <= (size - 1 - i); k++) {
+      fact *= k;
+    }
+    permValue += smallerCount * fact;
+  }
+  return permValue;
+}
+int getCornerOrientationInt() {
+  int cord = 0;
+  for (int i = 0; i < 7; i++) {
+    cord = cord * 3 + cornerOrientation[i];
+  }
+  return cord;
+}
+int getEdgeFlipInt() {
+  int edgeCode = 0;
+  for (int i = 0; i < 11; i++) {
+    edgeCode = (edgeCode << 1) | edgeFlip[i];
+  }
+  return edgeCode;
+}
+void sendDataToSolver() {
+  getCornerPermutation(); 
+  getEdgePermutation();
+  getCornerOrientation();
+  getEdgeFlip();
+
+  int currentCP        = permutationToInt(cornerPermutation, 8);
+  int currentEP        = permutationToInt(edgePermutation, 12);
+  int currentSlicePerm = getSlicePermutation();
+  int initialCord      = getCornerOrientationInt();
+  int initialEdge      = getEdgeFlipInt();
+  int initialSlice     = getSlicePosition();
+
+  // 3. Print all 6 integers separated by commas, ending with a newline for Java
+  Serial.print(currentCP); Serial.print(",");
+  Serial.print(currentEP); Serial.print(",");
+  Serial.print(currentSlicePerm); Serial.print(",");
+  Serial.print(initialCord); Serial.print(",");
+  Serial.print(initialEdge); Serial.print(",");
+  Serial.println(initialSlice); // println adds the \n that Java's serial listener waits for
+  while (Serial.available() == 0) {
+  }
+  String solution = Serial.readStringUntil('\n');
+  solution.trim();
+  delay(100);
+  solve(solution);
+}
+
+
+
+//4-6
+void getCornerOrientation(){ //   URF, UFL, ULB, UBR, DFR, DLF, DBL, DRB, (white = 0, y=1, r=2, o=3, g=4, b=5)
+  int indexes[] = {8,6,0,2,47,45,51,53}; // this method looks if the white/yellow corners have a white/yellow sticker on the top/bottom. if not, it checks if said corner is clockwise/ccw
+  int clockwiseIndexes[] = {27,18,9,36,26,17,44,36};
+  for(int i=0; i<8; i++){
+    if(cube[indexes[i]] == 0 || cube[indexes[i]] == 1){
+      cornerOrientation[i] = 0;
+    } else if(cube[clockwiseIndexes[i]] == 0 || cube[clockwiseIndexes[i]] == 1){
+      cornerOrientation[i] = 1;
+    } else {cornerOrientation[i] = 2;} // must be counterclockwise
+  }
+}
+void getEdgeFlip(){ //UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR
+  int indexes[] = {5,7,3,1,50,46,48,52,23,21,39,41};
+  for(int i=0; i<12; i++){
+    if(i<8 && (cube[indexes[i]] == 0 || cube[indexes[i]] == 1)){edgeFlip[i] = 0;} else {edgeFlip[i] = 1;}
+    if(i>=8 && (cube[indexes[i]] == 4 || cube[indexes[i]] == 5)){edgeFlip[i] = 0;} else {edgeFlip[i] = 1;}
+  }
+}
+int getSlicePosition() {
+  int indexes1[] = {5, 7, 3, 1, 50, 46, 48, 52, 23, 21, 39, 41};
+  int indexes2[] = {28, 19, 10, 52, 34, 25, 16, 43, 30, 14, 32, 12};
+
+  byte sliceColors[4][2] = {
+    {4, 2}, 
+    {4, 3}, 
+    {5, 3}, 
+    {5, 2}
+  };
+
+  int foundCount = 0;
+  int sliceMask = 0;
+
+  for (int i = 11; i >= 0; i--) {
+    byte c1 = cube[indexes1[i]];
+    byte c2 = cube[indexes2[i]];
+    bool isSliceEdge = false;
+    for (int id = 0; id < 4; id++) {
+      if ((c1 == sliceColors[id][0] && c2 == sliceColors[id][1]) || 
+          (c1 == sliceColors[id][1] && c2 == sliceColors[id][0])) {
+        isSliceEdge = true;
+        break;
+      }
+    }
+
+    if (isSliceEdge) {
+      sliceMask += choose(i, foundCount + 1);
+      foundCount++;
+      if (foundCount == 4) break; // Stop once we found all 4 slice edges
+    }
+  }
+
+  return sliceMask; // 0-495
+}
+int choose(int n, int k) { // helper
+  if (k > n) return 0;
+  if (k == 0 || k == n) return 1;
+  int res = 1;
+  for (int i = 1; i <= k; i++) {
+    res = res * (n - i + 1) / i;
+  }
+  return res;
+}
+
+//1-3
+void getCornerPermutation() {
+  int indexes1[] = {8,  6,  0,  2,  47, 17, 15, 35};
+  int indexes2[] = {20, 11, 9,  29, 33, 24, 44, 42};
+  int indexes3[] = {27, 18, 38, 36, 26, 45, 51, 53};
+
+  byte cornerColors[8][3] = {
+    {0, 4, 2}, {0, 4, 3}, {0, 5, 3}, {0, 5, 2},
+    {1, 4, 2}, {1, 4, 3}, {1, 5, 3}, {1, 5, 2}
+  };
+
+  for (int i = 0; i < 8; i++) {
+    byte c1 = cube[indexes1[i]];
+    byte c2 = cube[indexes2[i]];
+    byte c3 = cube[indexes3[i]];
+    for (int pieceID = 0; pieceID < 8; pieceID++) {
+      if ((c1 == cornerColors[pieceID][0] || c1 == cornerColors[pieceID][1] || c1 == cornerColors[pieceID][2]) &&
+          (c2 == cornerColors[pieceID][0] || c2 == cornerColors[pieceID][1] || c2 == cornerColors[pieceID][2]) &&
+          (c3 == cornerColors[pieceID][0] || c3 == cornerColors[pieceID][1] || c3 == cornerColors[pieceID][2])) {
+        cornerPermutation[i] = pieceID;
+        break;
+      }
+    }
+  }
+}
+void getEdgePermutation() {
+  int indexes1[] = {5,  7,  3,  1,  50, 46, 48, 52, 23, 21, 39, 41};
+  int indexes2[] = {28, 19, 10, 52, 34, 25, 16, 43, 30, 14, 32, 12};
+
+  byte edgeColors[12][2] = {
+    {0, 2}, {0, 4}, {0, 3}, {0, 5}, // UR, UF, UL, UB
+    {1, 2}, {1, 4}, {1, 3}, {1, 5}, // DR, DF, DL, DB
+    {4, 2}, {4, 3}, {5, 3}, {5, 2}  // FR, FL, BL, BR
+  };
+
+  for (int i = 0; i < 12; i++) {
+    byte c1 = cube[indexes1[i]];
+    byte c2 = cube[indexes2[i]];
+    for (int j = 0; j < 12; j++) {
+      if ((c1 == edgeColors[j][0] && c2 == edgeColors[j][1]) || 
+          (c1 == edgeColors[j][1] && c2 == edgeColors[j][0])) {
+        edgePermutation[i] = j;
+        break;
+      }
+    }
+  }
+}
+int getSlicePermutation() {
+  int indexes1[] = {23, 21, 39, 41}; // FR, FL, BL, BR slot primary stickers
+  int indexes2[] = {30, 14, 32, 12}; // FR, FL, BL, BR slot secondary stickers
+
+  byte sliceColors[4][2] = {
+    {4, 2}, {4, 3}, {5, 3}, {5, 2} // IDs 8, 9, 10, 11
+  };
+  for (int i = 0; i < 4; i++) {
+    byte c1 = cube[indexes1[i]];
+    byte c2 = cube[indexes2[i]];
+
+    for (int id = 0; id < 4; id++) {
+      if ((c1 == sliceColors[id][0] && c2 == sliceColors[id][1]) || 
+          (c1 == sliceColors[id][1] && c2 == sliceColors[id][0])) {
+        slice[i] = id; // Stores 0, 1, 2, or 3
+        break;
+      }
+    }
+  }
+
+  // Convert to a 0-23 permutation integer using factorial math
+  int permValue = 0;
+  int factor[] = {1, 1, 2, 6};
+  for (int i = 0; i < 4; i++) {
+    int smallerCount = 0;
+    for (int j = i + 1; j < 4; j++) {
+      if (slice[j] < slice[i]) smallerCount++;
+    }
+    permValue += smallerCount * factor[3 - i];
+  }
+  return permValue;
+}
+
+
+
+int complimentNum(int n){ // this method tells the other 2 color sensors on the left side what face ther are looking at. It returns the index of the middle of the face
+  if(n == 4){return 49;}
+  if(n == 22){return 40;}
+  if(n == 31){return 22;}
+  return -1; // error
+}
+void scanColors(int n){// This method scans the entirety of the current right and left face. It scan a corner, then a edge and rotates the cube so that a new corner and edge can be scanned.
+  uint16_t r, g, b, c;
+  for(int i=0; i<=3; i++){
+    tcaselect(0);
+    delay(100); // Stabilization delay for I2C bus
+    c = read16(0x14); r = read16(0x16); g = read16(0x18); b = read16(0x1A);
+    cube[n-3] = (returnColor(r,g,b,c));
+    tcaselect(1);
+    delay(100);
+    c = read16(0x14); r = read16(0x16); g = read16(0x18); b = read16(0x1A);
+    cube[n-2] = (returnColor(r,g,b,c));
+    tcaselect(2);
+    delay(100);
+    c = read16(0x14); r = read16(0x16); g = read16(0x18); b = read16(0x1A);
+    cube[complimentNum(n)-3] = (returnColor(r,g,b,c));
+    tcaselect(3);
+    delay(100);
+    c = read16(0x14); r = read16(0x16); g = read16(0x18); b = read16(0x1A);
+    cube[complimentNum(n)-2] = (returnColor(r,g,b,c));
+    rotateSides("R", "L");
+    delay(100);
+  }
+}
+/* This method starts the sequene. It waits for a button to get it begin, then scans the left and right faces. It then does a hardcoded move sequence to move colors from 1 face to another face. This 
+Allows us to use only 4 color sensors by just shinfting all the faces while keeping the specific spot each color is in the same*/
+void scanCube(){ // start here
+  bool buttonPressed = false;
+  Serial.print("started");
+  while(!buttonPressed){
+    if(digitalRead(startButton) == LOW){
+      buttonPressed = true;
+    }
+    delay(10);
+  }
+  Serial.println("0,0,0,0,0,0");
+  int motorCooldown = 1000;
+  scanColors(31);//red
+  delay(motorCooldown);
+  rotateSidesOpposite("R", "L'"); // one the said way, then the second move the opposite way
+  delay(motorCooldown);
+  rotateSidesOpposite("D", "U'");
+  delay(motorCooldown);
+  rotateSidesOpposite("F", "B'");
+  delay(motorCooldown);
+  scanColors(22);//green
+  delay(motorCooldown);
+  rotateSidesOpposite("U", "D'");
+  delay(motorCooldown);
+  rotateSidesOpposite("F", "B'");
+  delay(motorCooldown);
+  scanColors(4);//white
+  delay(motorCooldown);
+  rotateSidesPrimeOpposite("F'", "B");
+  delay(motorCooldown);
+  rotateSidesPrimeOpposite("U'", "D");
+  delay(motorCooldown);
+  rotateSidesPrimeOpposite("F'", "B");
+  delay(motorCooldown);
+  rotateSidesPrimeOpposite("D'", "U");
+  delay(motorCooldown);
+  rotateSidesPrimeOpposite("R'", "L");
+  delay(motorCooldown);
+  sendDataToSolver();
+}
+/* this method takes a sensors raw RGB / Clear data and makes a guess on what color is being passed. It takes the hardcoded color data, and subtracts the difference for each value, then sums 
+everything for a total score. The color with the lowest score wins. For example, a color with R,G,B,C data with 100,100,100,100 will match closely with passed values that look something
+ like 101, 98, 107, 104 vs a color with data like 180, 190, 45, 200*/
+int returnColor(int red, int green, int blue, int clear){ // returns the color that matches closest to data in the form a number (white = 0, y=1, r=2, o=3, g=4, b=5)
+  int scores[] {32767, 32767, 32767, 32767, 32767, 32767}; // int max is 32767
+  for(int i=0; i<6; i++){
+    int score1 = abs(colorArr[i][0]-red);
+    int score2 = abs(colorArr[i][1]-green);
+    int score3 = abs(colorArr[i][2]-blue);
+    int score4 = abs(colorArr[i][3]-clear);
+    scores[i]= score1 + score2 + score3 + score4;
+  }
+  int lowest = 32767;
+  int returned = -1;
+  for(int i=0; i<6; i++){
+    if(scores[i] < lowest){lowest = scores[i], returned =i;}
+  }
+  return returned;
+}
+/*this code takes the return string, breaks it up individually, and passes each letter to the rotate methods */
+void solve(String solution){ // pass a string(ex: u f2 d' r l)
+  for(int i = 0; i < solution.length(); i++){
+    if(solution.substring(i, i+1).equals(" ")) { continue; }
+    if(i + 1 < solution.length() && solution.substring(i+1, i+2).equals("2")){
+      rotate2(solution.substring(i, i+2)); 
+      i++;
+      continue;
+    }
+    if(i + 1 < solution.length() && solution.substring(i+1, i+2).equals("'")){
+      rotatePrime(solution.substring(i, i+2)); 
+      i++;
+      continue;
+    }
+    for(int j = 0; j < 6; j++){ 
+      if(solution.substring(i, i+1).equalsIgnoreCase(moves[j])){
+        rotate(solution.substring(i, i+1));
+        break;
+      }
+    }
+  }
+}
+
+
+
+
+
+
+
+int num1=13;
+int num2=26;
+/*these methods all rotate the cibe in different ways. Methods that are passed 2 varaibles rotate 2 sides. Methods ending with the number2 move the side/sides twice. Methods ending in prime rotate 
+the sides counterclockwise. Methods ending in opposite rotate the second face the opposite way as the first. */
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void rotate(String move){
+  int index =0;
+  for(int i=0; i<6; i++){
+    if(moves[i].equals(move)){index =i;}
+  }
+  for(int i=0; i<num1; i++){
+    digitalWrite(pins[index][1], HIGH); digitalWrite(pins[index][2], LOW);
+    digitalWrite(pins[index][3], HIGH); digitalWrite(pins[index][4], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index][1], LOW); digitalWrite(pins[index][2], HIGH);
+    digitalWrite(pins[index][3], HIGH); digitalWrite(pins[index][4], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index][1], LOW); digitalWrite(pins[index][2], HIGH);
+    digitalWrite(pins[index][3], LOW); digitalWrite(pins[index][4], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index][1], HIGH); digitalWrite(pins[index][2], LOW);
+    digitalWrite(pins[index][3], LOW); digitalWrite(pins[index][4], HIGH);
+    delay(waitTime);
+  }
+  digitalWrite(pins[index][0], HIGH); digitalWrite(pins[index][1], LOW);
+  digitalWrite(pins[index][2], HIGH); digitalWrite(pins[index][3], LOW);
+  delay(waitTime);
+  digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], HIGH);
+  digitalWrite(pins[index][2], HIGH); digitalWrite(pins[index][3], LOW);
+  delay(waitTime);
+  delay(80);
+  digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], LOW); // I was told to de energize the coils to prevent heat
+  digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], LOW);
+}
+void rotate2(String move){
+  int index =0;
+  for(int i=0; i<6; i++){
+    if(moves2[i].equals(move)){index =i;}
+  }
+  for(int i=0; i<num2; i++){
+    digitalWrite(pins[index][0], HIGH); digitalWrite(pins[index][1], LOW);
+    digitalWrite(pins[index][2], HIGH); digitalWrite(pins[index][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], HIGH);
+    digitalWrite(pins[index][2], HIGH); digitalWrite(pins[index][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], HIGH);
+    digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index][0], HIGH); digitalWrite(pins[index][1], LOW);
+    digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], HIGH);
+    delay(waitTime);
+  }
+  delay(80);
+  digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], LOW);
+  digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], LOW);
+}
+void rotatePrime(String move){
+  int index =0;
+  for(int i=0; i<6; i++){
+    if(movesPrime[i].equals(move)){index =i;}
+  }
+  for(int i=0; i<num1; i++){
+    digitalWrite(pins[index][0], HIGH); digitalWrite(pins[index][1], LOW);
+    digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], HIGH);
+    digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], HIGH);
+    digitalWrite(pins[index][2], HIGH); digitalWrite(pins[index][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index][0], HIGH); digitalWrite(pins[index][1], LOW);
+    digitalWrite(pins[index][2], HIGH); digitalWrite(pins[index][3], LOW);
+    delay(waitTime);
+  }
+  digitalWrite(pins[index][0], HIGH); digitalWrite(pins[index][1], LOW);
+  digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], HIGH);
+  delay(waitTime);
+  digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], HIGH);
+  digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], HIGH);
+  delay(waitTime);
+  delay(80);
+  digitalWrite(pins[index][0], LOW); digitalWrite(pins[index][1], LOW);
+  digitalWrite(pins[index][2], LOW); digitalWrite(pins[index][3], LOW);
+}
+void rotateSides(String move1, String move2){ // next 3 methods rotate both sides either regular or prime (ex rotateSides moves both sides clockwise)
+  int index1 =0;
+  int index2 =0;
+  for(int i=0; i<6; i++){
+    if(moves[i].equals(move1)){index1 =i;}
+    if(moves[i].equals(move2)){index2 =i;}
+  }
+  for(int i=0; i<num1; i++){
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+  }
+  digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+  delay(waitTime);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+  digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+  digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+  delay(waitTime);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], LOW);
+  
+}
+void rotateSides2(String move1, String move2){
+    int index1 =0;
+    int index2 =0;
+  for(int i=0; i<6; i++){
+    if(moves2[i].equals(move1)){index1 =i;}
+    if(moves2[i].equals(move2)){index2 =i;}
+  }
+  for(int i=0; i<num2; i++){
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+  }
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], LOW);
+}
+void rotateSidesPrime(String move1, String move2){
+  int index1 =0;
+  int index2 =0;
+  for(int i=0; i<6; i++){
+    if(movesPrime[i].equals(move1)){index1 =i;}
+    if(movesPrime[i].equals(move2)){index2 =i;}
+  }
+  for(int i=0; i<num1; i++){
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+  }
+  digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+  digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+  delay(waitTime);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+  delay(waitTime);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], LOW);
+}
+void rotateSidesOpposite(String move1, String move2){
+  int index1 = 0;
+  int index2 = 0;
+  for(int i = 0; i < 6; i++){
+    if(moves[i].equals(move1)){index1 = i;}
+    if(movesPrime[i].equals(move2)){index2 = i;}
+  }
+  for(int i = 0; i < num1+1; i++){
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+  }
+  digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+  delay(waitTime);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+  digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+  if(move2.equals("L'")){
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    for(int i=0; i<2; i++){
+      digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+      digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+      delay(waitTime);
+      digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+      digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+      delay(waitTime);
+      digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+      digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+      delay(waitTime);
+      digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+      digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+      delay(waitTime);
+    }
+  }
+  delay(waitTime);
+  delay(80);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], LOW);
+}
+void rotateSides2Opposite(String move1, String move2){
+  int index1 = 0;
+  int index2 = 0;
+  for(int i = 0; i <6; i++){
+    if(moves2[i].equals(move1)){index1 = i;}
+    if(moves2[i].equals(move2)){index2 = i;}
+  }
+  for(int i = 0; i < num2; i++){
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+  }
+  delay(80);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], LOW);
+}
+void rotateSidesPrimeOpposite(String move1, String move2){
+  int index1 = 0;
+  int index2 = 0;
+  for(int i = 0; i <6; i++){
+    if(movesPrime[i].equals(move1)){index1 = i;}
+    if(moves[i].equals(move2)){index2 = i;}
+  }
+  for(int i = 0; i < num1; i++){
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], HIGH); digitalWrite(pins[index1][3], LOW);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], HIGH);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], HIGH);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], HIGH);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+    digitalWrite(pins[index1][0], HIGH); digitalWrite(pins[index1][1], LOW);
+    digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], HIGH);
+    digitalWrite(pins[index2][0], HIGH); digitalWrite(pins[index2][1], LOW);
+    digitalWrite(pins[index2][2], HIGH); digitalWrite(pins[index2][3], LOW);
+    delay(waitTime);
+  }
+  delay(80);
+  digitalWrite(pins[index1][0], LOW); digitalWrite(pins[index1][1], LOW);
+  digitalWrite(pins[index1][2], LOW); digitalWrite(pins[index1][3], LOW);
+  digitalWrite(pins[index2][0], LOW); digitalWrite(pins[index2][1], LOW);
+  digitalWrite(pins[index2][2], LOW); digitalWrite(pins[index2][3], LOW);
+}
+
+
+/*  // Step 1
+  digitalWrite(ain1, HIGH); digitalWrite(ain2, LOW);
+  digitalWrite(bin1, HIGH); digitalWrite(bin2, LOW);
+  delay(waitTime);
+
+  // Step 2
+  digitalWrite(ain1, LOW); digitalWrite(ain2, HIGH);
+  digitalWrite(bin1, HIGH); digitalWrite(bin2, LOW);
+  delay(waitTime);
+
+  // Step 3
+  digitalWrite(ain1, LOW); digitalWrite(ain2, HIGH);
+  digitalWrite(bin1, LOW); digitalWrite(bin2, HIGH);
+  delay(waitTime);
+
+  // Step 4
+  digitalWrite(ain1, HIGH); digitalWrite(ain2, LOW);
+  digitalWrite(bin1, LOW); digitalWrite(bin2, HIGH);
+  delay(waitTime);*/
