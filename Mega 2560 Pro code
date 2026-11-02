@@ -192,7 +192,7 @@ void sendDataToSolver() {
   int initialEdge      = getEdgeFlipInt();
   int initialSlice     = getSlicePosition();
 
-  // 3. Print all 6 integers separated by commas, ending with a newline for Java
+  // 3. Print all 6 integers separated by commas. Java is looking for this format
   Serial.print(currentCP); Serial.print(",");
   Serial.print(currentEP); Serial.print(",");
   Serial.print(currentSlicePerm); Serial.print(",");
