@@ -1,0 +1,50 @@
+// Artificial Intelligence was used to assist in writing code for the ports
+// This code reads a input from the computer, and returns the solution output
+
+import com.fazecast.jSerialComm.SerialPort;
+import java.util.Scanner;
+
+public class Messenger {
+    public static void main(String[] args) {
+        Solver solver = new Solver();
+        
+        SerialPort comPort = SerialPort.getCommPort("COM5"); 
+        comPort.setBaudRate(9600);
+        comPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0);
+
+        if (!comPort.openPort()) {
+            System.out.println("Error: Could not open port.");
+            return;
+        }
+
+        Scanner scanner = new Scanner(comPort.getInputStream());
+
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine().trim();
+            if (line.isEmpty()) continue;
+
+            try {
+                String[] parts = line.split("[,\\s]+");
+                
+                if (parts.length >= 6) {
+                    int cp    = Integer.parseInt(parts[0]);
+                    int ep    = Integer.parseInt(parts[1]);
+                    int sp    = Integer.parseInt(parts[2]);
+                    int cord  = Integer.parseInt(parts[3]);
+                    int edge  = Integer.parseInt(parts[4]);
+                    int slice = Integer.parseInt(parts[5]);
+
+                    String solution = solver.runner(cp, ep, sp, cord, edge, slice);
+                    
+                    comPort.getOutputStream().write((solution + "\n").getBytes());
+                    comPort.getOutputStream().flush();
+                }
+            } catch (Exception e) {
+                // handles non coordinate text lines
+            }
+        }
+        
+        scanner.close();
+        comPort.closePort();
+    }
+}
