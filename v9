@@ -1,461 +1,807 @@
-import java.util.*; // used in the final solver, does not include the prune search for finish
-public class TestClass{
-	public static HashMap<List<Integer>, String> map = new HashMap<>(); // for main method must be static
-	public static HashMap<List<Integer>, String> table = new HashMap<>();
-	static int[] EOarr = new int[2048*495];
-	static int[] COarr = new int[2187*495];
-	public int turn(int x, int times) {
-		int num = 0;
-		int passed = x;
-		int[] CCclockwise = {7,4,1,8,5,2,9,6,3};
-		int[] clockwise = {3,6,9,2,5,8,1,4,7};
-		if(times==0) {
-			return passed;
-		} else if(times>0) {
-			for(int i=0; i<times; i++) {
-				for(int j=0; j<clockwise.length; j++) {
-					num = (num*10) + passed % (int)Math.pow(10, clockwise[j])/((int)Math.pow(10, clockwise[j]-1));
-				}
-				if(times-1 > i) {passed = num; num = 0;}
-			}
-		} else {
-			for(int i=0; i>times; i--) {
-				for(int j=0; j<CCclockwise.length; j++) {
-					num = (num*10) + passed % (int)Math.pow(10, CCclockwise[j])/((int)Math.pow(10, CCclockwise[j]-1));
-				}
-				if(times+1 < i) {passed = num; num =0;}
-			}
-		} 
-		return num;
-	}
-	public static void waitHalfSecond() {
-		try {
-		    Thread.sleep(500);
-		} catch (InterruptedException e) {
-		    // Handle the exception if another thread interrupts the current thread while it's sleeping
-		    Thread.currentThread().interrupt(); // Restore the interrupted status
-		    System.out.println("Thread was interrupted: " + e.getMessage());
-		}
-	}
-	public ArrayList<Integer> turnFace(int[] Ocube, String[] lastMove, boolean inPhaseTwo, boolean prune){
-		int[] rotateList = {0, -1, 2, 1};
-		int[] sortedArr = new int[6];
-		HashMap<Integer, Integer> sortedMap = new HashMap<>();
-		List<Integer> stuffToRemove = new ArrayList<>();
-		ArrayList<Integer> turns = new ArrayList<>();
-		int extraTemp = 0;
-		
-		
-		int[] cube = new int[Ocube.length];
-		int[] temp = new int[Ocube.length];
-		List<Integer> oldkey = new ArrayList<>();
-		for(int i=0; i<Ocube.length; i++) {
-			cube[i] = Ocube[i];
-			temp[i] = Ocube[i];
-			oldkey.add(Ocube[i]);;
-		}
-		//get numbers for white side first--------------------------------------------------------------------------------------------------------------------------------------
-		temp[0] = turn(cube[0], 1);
-		temp[4] = cube[4]%1000000 + (cube[1]/1000000)*1000000;
-		temp[5] = cube[5];
-		turns.add(temp[0]);
-		for(int i=1; i<=3; i++) {
-			temp[i] = ((cube[i]%1000000) + (cube[i+1]/1000000)*1000000);
-			turns.add(temp[i]);
-		}
-		turns.add(temp[4]);
-		turns.add(temp[5]);
-		if(!inPhaseTwo) {
-			for(int i=0; i<=3; i++) { // rotates orange green red blue clockwise by re assigning sides of the cube to other faces
-				temp[0] = turn((cube[0]/100000000)*100000000 + (cube[0]/10000000%10)*10000000 + (cube[2]/1000000%10)*1000000 + (cube[0]/100000%10)*100000 + (cube[0]/10000%10)*10000 + (cube[2]/1000%10)*1000 + (cube[0]/100%10)*100 + (cube[0]/10%10)*10 + (cube[2]%10), rotateList[i]);
-				temp[1] = cube[1];
-				temp[2] = (cube[2]/100000000)*100000000 + (cube[2]/10000000%10)*10000000 + (cube[5]/1000000%10)*1000000 + (cube[2]/100000%10)*100000 + (cube[2]/10000%10)*10000 + (cube[5]/1000%10)*1000 + (cube[2]/100%10)*100 + (cube[2]/10%10)*10 + (cube[5]%10);
-				temp[3] = turn(cube[3], 1);
-				temp[4] = (cube[0]%10)*100000000 + (cube[4]/10000000%10)*10000000 + (cube[4]/1000000%10)*1000000 + (cube[0]/1000%10)*100000 + (cube[4]/10000%10)*10000 + (cube[4]/1000%10)*1000 + (cube[0]/1000000%10)*100 + (cube[4]/10%10)*10 + (cube[4]%10);
-				temp[5] = turn((cube[5]/10000000)*10000000 + (cube[4]/100%10)*1000000 + (cube[5]/10000%100)*10000 + (cube[4]/100000%10)*1000 + (cube[5]/10%100)*10 + (cube[4]/100000000%10), -1*rotateList[i]);
-				for(int j=0; j<temp.length; j++) {
-					sortedArr[j] = (temp[j]/10000)%10;
-					sortedMap.put(sortedArr[j], temp[j]);
-				}
-				Arrays.sort(sortedArr);
-				for(int j=0; j<temp.length; j++) {turns.add(sortedMap.get(sortedArr[j]));}
-				extraTemp = cube[1];
-				cube[1] = cube[2];
-				cube[2] = cube[3];
-				cube[3] = cube[4];
-				cube[4] = extraTemp;
-				cube[0] = turn(cube[0], 1);
-				cube[5] = turn(cube[5], -1);
-			}
-		}
-		// now for yellow side
-		temp[0] = cube[0];
-		temp[1] = cube[4]%1000 + (cube[1]/1000)*1000; // check please
-		temp[5] = turn(cube[5], 1);
-		turns.add(temp[0]);
-		turns.add(temp[1]);
-		for(int i=2; i<=4; i++) {
-			temp[i] = cube[i-1]%1000 + (cube[i]/1000)*1000;
-			turns.add(temp[i]);
-		}
-		turns.add(temp[5]);
-		//------------------------------------------------------------------------------------------------------------------- now for counterclockwise
-		temp[0] = turn(cube[0], -1); // white side
-		temp[1] = cube[1]%1000000 + cube[4]/1000000*1000000;
-		turns.add(temp[0]);
-		turns.add(temp[1]);
-		for(int i=2; i<=4; i++) {
-			temp[i] = cube[i]%1000000 + cube[i-1]/1000000*1000000;
-			turns.add(temp[i]);
-		}
-		temp[5] = cube[5]; // 4 sides
-		turns.add(temp[5]);
-		if(!inPhaseTwo) {
-			for(int i=0; i<=3; i++) {
-				temp[0] = turn((cube[0]/10000000)*10000000 + (cube[4]/100%10)*1000000 + (cube[0]/10000%100)*10000 + (cube[4]/100000%10)*1000 + (cube[0]/10%100)*10 + (cube[4]/100000000), rotateList[i]);
-				temp[1] = cube[1];
-				temp[2] = (cube[2]/10000000)*10000000 + (cube[0]/1000000%10)*1000000 + (cube[2]/10000%100)*10000 + (cube[0]/1000%10)*1000 + (cube[2]/10%100)*10 + cube[0]%10;
-				temp[3] = turn(cube[3], -1);
-				temp[4] = cube[5]%10*100000000 + (cube[4]/1000000%100)*1000000 + (cube[5]/1000%10)*100000 + (cube[4]/1000%100)*1000 + (cube[5]/1000000%10)*100 + cube[4]%100; // double check
-				temp[5] = turn((cube[5]/10000000)*10000000 + (cube[2]/1000000%10)*1000000 + (cube[5]/10000%100)*10000 + (cube[2]/1000%10)*1000 + (cube[5]/10%100)*10 + cube[2]%10, -1*rotateList[i]); // double check
-				for(int j=0; j<temp.length; j++) {
-					sortedArr[j] = (temp[j]/10000)%10;
-					sortedMap.put(sortedArr[j], temp[j]);
-				}
-				Arrays.sort(sortedArr);
-				for(int j=0; j<temp.length; j++) {turns.add(sortedMap.get(sortedArr[j]));}
-				extraTemp = cube[1];
-				cube[1] = cube[2];
-				cube[2] = cube[3];
-				cube[3] = cube[4];
-				cube[4] = extraTemp;
-				cube[0] = turn(cube[0], 1);
-				cube[5] = turn(cube[5], -1);
+// code recently replaced with correct code
 
-			}
-		}// now yellow
-		temp[0] = cube[0];
-		for(int i=1; i<=3; i++) {
-			temp[i] = (cube[i]/1000)*1000 + cube[i+1]%1000;
-		}
-		temp[4] = (cube[4]/1000)*1000 + cube[1]%1000;
-		temp[5] = turn(cube[5], -1);
-		for(int i=0; i<temp.length; i++) {
-			turns.add(temp[i]);
-		}
-		//------------------------------------------------------------------------------------------------------------------- 2 turns
-		temp[0] = turn(cube[0], 2); // white side
-		temp[1] = (cube[3]/1000000)*1000000 + cube[1]%1000000;
-		temp[2] = (cube[4]/1000000)*1000000 + cube[2]%1000000;
-		temp[3] = (cube[1]/1000000)*1000000 + cube[3]%1000000;
-		temp[4] = (cube[2]/1000000)*1000000 + cube[4]%1000000;
-		temp[5] = cube[5];
-		for(int i=0; i<temp.length; i++) {
-			turns.add(temp[i]);
-		} // now 4 sides
-		for(int i=0; i<=3; i++) {
-			temp[0] = turn((cube[5])%10 + (cube[0]/10%100)*10 + (cube[5]/1000%10)*1000 + (cube[0]/10000%100)*10000 + (cube[5]/1000000%10)*1000000 + (cube[0]/10000000)*10000000, rotateList[i]);
-			temp[1] = cube[1];
-			temp[2] = (cube[4]/100000000) + (cube[2]/10%100)*10 + (cube[4]/100000%10)*1000 + (cube[2]/10000%100)*10000 + (cube[4]/100%10)*1000000 + (cube[2]/10000000)*10000000;
-			temp[3] = turn(cube[3], 2);
-			temp[4] = (cube[4]%100) + (cube[2]/1000000%10)*100 + (cube[4]/1000%100)*1000 + (cube[2]/1000%10)*100000 + (cube[4]/1000000%100)*1000000 + (cube[2]%10)*100000000;
-			temp[5] = turn((cube[0])%10 + (cube[5]/10%100)*10 + (cube[0]/1000%10)*1000 + (cube[5]/10000%100)*10000 + (cube[0]/1000000%10)*1000000 + (cube[5]/10000000)*10000000, -1*rotateList[i]);
-			for(int j=0; j<temp.length; j++) {
-				sortedArr[j] = (temp[j]/10000)%10;
-				sortedMap.put(sortedArr[j], temp[j]);
-			}
-			Arrays.sort(sortedArr);
-			for(int j=0; j<temp.length; j++) {turns.add(sortedMap.get(sortedArr[j]));}
-			extraTemp = cube[1];
-			cube[1] = cube[2];
-			cube[2] = cube[3];
-			cube[3] = cube[4];
-			cube[4] = extraTemp;
-			cube[0] = turn(cube[0], 1); // after turning both the white and yellow " cube " arrays, the square numbers will allign on both sides.
-			cube[5] = turn(cube[5], -1);
-		}
+//Exact replica of the PruneTable class
+import java.util.*;
+public class Solver {
+	public String runner(int cp, int ep, int sp, int cord, int edge, int slice) {
+	    //If your tables are already generated on startup,
+	    // keep these generation lines commented out so runner() stays fast!
+	    /*
+	    generateCPMoveTable();
+	    generateEPMoveTable();
+	    generateSliceTables();
+	    generateCPPruningTable();
+	    generateEPPruningTable();
+	    */
 
-		
-		// now yellow
-		temp[0] = cube[0];
-		temp[1] = cube[3]%1000 + (cube[1]/1000)*1000;
-		temp[2] = cube[4]%1000 + (cube[2]/1000)*1000;
-		temp[3] = cube[1]%1000 + (cube[3]/1000)*1000;
-		temp[4] = cube[2]%1000 + (cube[4]/1000)*1000;
-		temp[5] = turn(cube[5], 2);
-		for(int i=0; i<temp.length; i++) {
-			turns.add(temp[i]);
-		}
-		for(int i=0; i<turns.size(); i+=6) {
-			List<Integer> key =  new ArrayList<>();
-			for(int j=0; j<6; j++) {
-				key.add(turns.get(i+j));
-			}
-			if(!map.containsKey(key)) {
-				map.put(key, map.get(oldkey)+ " " +lastMove[i/6]);
-			} else {
-				for(int j=0; j<6; j++) {
-					stuffToRemove.add(i+j); // add indexes to remove
-				}
-			}
-		}
-		if(prune) {
-			for(int i=stuffToRemove.size()-1; i>=0; i--) { // likely error
-				turns.remove((int)stuffToRemove.get(i)); // we will start from the back to prevent skipping index -- (int)
-			}
-		}
-		return turns;
-	}
-	public void pruneTable(int[] cube, boolean inPhaseTwo, int depth){ // 2 maps, and the list should be the key for both
-		int[] arr = new int[6];
-		String[] lastMove = {"u'", "d'", "u", "d", "u2", "r2", "b2", "l2", "f2", "d2"}; // backwards because otherwise you would print order from solved to state, not state to solved
-		List<Integer> oldCube = new ArrayList<>();
-		Queue<List<Integer>> queue = new LinkedList<>(); // queue of integer replaced with queue of list<integer> to preserve the keys in the map
-		List<Integer> list = new ArrayList<>();
-		list = turnFace(cube, lastMove, inPhaseTwo, false);
-		for(int i=0; i<list.size(); i+=6) {
-			List<Integer> startMap = new ArrayList<>();
-			for(int j=0; j<arr.length; j++) {
-				startMap.add(list.get(i+j));
-			}
-			queue.offer(startMap);
-			table.put(startMap, lastMove[i/6]);
-		}
-		
-		int pow = (int)Math.pow(18, depth); // switches between 10 and 18. 10= 111 ms, 18 = 413 ms
-		for(int i=0; i<pow; i++) {
-			List<Integer> nextQueue = queue.remove();
-			oldCube = new ArrayList<>();
-			for(int a=0; a<arr.length; a++){
-				arr[a] = nextQueue.get(a);
-				oldCube.add(arr[a]);
-			} 	
-			list = turnFace(arr, lastMove, inPhaseTwo, false);
-			for(int j=0; j<list.size(); j+=6) {
-				List<Integer> nextCube = new ArrayList<>();
-				for(int k=0; k<arr.length; k++) {
-					nextCube.add(list.get(j+k));
-				}
-				if(!table.containsKey(nextCube)) {
-					table.put(nextCube, lastMove[j/6] + " " + table.get(oldCube)); 
-					queue.offer(nextCube); //for(int k=0; k<arr.length; k++) { queue.offer(list);}
-				}
-				//nextCube.clear(); - sets the key values to [] each time (nothing in list)
-			}
-		}
-		map.clear();
-	}
-	public boolean inPhaseTwo(int[] arr) {
-		int[] pow = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000};
-		int Face =0;
-		int num =0;
-		for(int i=0; i<arr.length; i++) {
-			if(arr[i]/10000%10 == 1) {
-				Face = arr[i];
-				i=arr.length; // break
-			}
-		}
-		for(int i=0; i<9; i++) {
-			num = (Face/pow[i])%10;
-			if(num != 1 && num != 6) {
-				return false;
-			}
-		}
-		for(int i=0; i<arr.length; i++) {
-			if(arr[i]/10000%10 == 6) {
-				Face = arr[i];
-				i=arr.length; // break
-			}
-		}
-		for(int i=0; i<9; i++) {
-			num = (Face/(int)pow[i])%10;
-			if(num != 1 && num != 6) {
-				return false;
-			}
-		}
-		for(int i=0; i<arr.length; i++) {
-			if(arr[i]/10000%10 == 3) {
-				Face = arr[i];
-				i=arr.length; // break
-			}
-		}
-		if((Face/1000)%10 != 3 && (Face/1000)%10 != 5) {
-			return false;
-		}
-		if((Face/100000)%10 != 3 && (Face/100000)%10 != 5) {
-			return false;
-		}
-		for(int i=0; i<arr.length; i++) {
-			if(arr[i]/10000%10 == 5) {
-				Face = arr[i];
-				i=arr.length; // break
-			}
-		}
-		if((Face/1000)%10 != 3 && (Face/1000)%10 != 5) {
-			return false;
-		}
-		if((Face/100000)%10 != 3 && (Face/100000)%10 != 5) {
-			return false;
-		}
-		return true;
-	}
+	    int currentCP = cp;
+	    int currentEP = ep;
+	    int currentSlicePerm = sp;
+	    int initialCord = cord;
+	    int initialEdge = edge;
+	    int initialSlice = slice;
 
+	    String phase1Moves = solvePhase1(initialCord, initialEdge, initialSlice);
+	    
+	    for (int i = 0; i < phase1Depth; i++) {
+	        int moveID = solutionPath[i];
+	        currentCP = cpMoveTable[currentCP][moveID];
+	        currentEP = epMoveTable[currentEP][moveID];
+	        currentSlicePerm = sliceMoveTable[currentSlicePerm][moveID];
+	    }
+
+	    String phase2Moves = solvePhase2(currentCP, currentEP, currentSlicePerm);
+	    String finalSolution = (phase1Moves + " " + phase2Moves).trim();
+	    
+	    return finalSolution;
+	}
+	public int[][][] copyMoveTables(){
+		//all arrays should be a rectangle(no jagged)
+		int[][] copyCordTable = new int[cordTable.length][cordTable[0].length];
+		int[][] copyEdgeTable = new int[edgeTable.length][edgeTable[0].length];
+		int[][] copySliceTable = new int[sliceTable.length][sliceTable[0].length];
+		for(int i=0; i<cordTable.length; i++) {
+			for(int j=0; j<cordTable[i].length; j++) {
+				copyCordTable[i][j] = cordTable[i][j];
+			}
+		}
+		for(int i=0; i<edgeTable.length; i++) {
+			for(int j=0; j<edgeTable[i].length; j++) {
+				copyEdgeTable[i][j] = edgeTable[i][j];
+			}
+		}
+		for(int i=0; i<sliceTable.length; i++) {
+			for(int j=0; j<sliceTable[i].length; j++) {
+				copySliceTable[i][j] = sliceTable[i][j];
+			}
+		}
+		return new int[][][]{copyCordTable, copyEdgeTable, copySliceTable};
+	}
 	
-	public static void main(String[] args) {
-		TestClass fido = new TestClass();
-		long startTime = System.nanoTime();
-		int[] solved = {111111111, 222222222, 333333333, 444444444, 555555555, 666666666};
-		List<Integer> solution = new ArrayList<>();
-		for(int a:solved) { solution.add(a);} // make a list and a array of the solved cube
-		String[] moves = {"u", "r", "b", "l", "f", "d", "u'", "r'", "b'", "l'", "f'", "d'", "u2", "r2", "b2", "l2", "f2", "d2"}; //must be string for prime moves
-		String[] moves2 = {"u", "d", "u'", "d'", "u2", "r2", "b2", "l2", "f2", "d2"};
-		int[] nextCube = {333111333, 636222222, 444636636, 151444444, 222151151, 565565565}; // 333111333, 636222222, 444636636, 151444444, 222151151, 565565565 // 511311253, 221424444, 544331551, 122542522, 336551333, 664666666 - test
-		int[] cube = {333111333, 636222222, 444636636, 151444444, 222151151, 565565565}; //255414426, 655124323, 153331224, 264342661, 665355244, 113663115 - long
-		boolean phaseTwo = false;
-		ArrayList<Integer> nextDepth = fido.turnFace(nextCube, moves, phaseTwo, true);
-		fido.pruneTable(solved, !phaseTwo, 3);
-		Queue<Integer> queue = new LinkedList<>();
-		for(int i=0; i<nextDepth.size(); i+=6) {
-			List<Integer> startMap = new ArrayList<>();
-			for(int j=0; j<6; j++) {
-				startMap.add(nextDepth.get(i+j));
-				queue.add(nextDepth.get(i+j));
-			}
-			map.put(startMap, moves[i/6]);
-		}
-		/*
-		for(int i=0; i<9; i++) {
-			nextDepth = fido.turnFace(cube, moves, false, false);
-			int rand = (int)(Math.random()*18);
-			System.out.println();
-			System.out.print(moves[rand] + ": ");
-			rand *=6;
-			for(int j=0; j<6; j++) {
-				cube[j] = nextDepth.get(rand+j);
-				System.out.print(cube[j] + ", ");
-			}
-		}
-		*/
-		int a =0;
-		while(!phaseTwo) {
-			nextDepth = fido.turnFace(nextCube, moves, phaseTwo, true); // returns 108 integers
-			for(int i=0; i<nextDepth.size(); i+=6) {
-				List<Integer> list = new ArrayList<>();
-				for(int j=0; j<6; j++) {
-					a = nextDepth.get(i+j);
-					list.add(a);
-					nextCube[j] = a;
-				}
-				if(fido.inPhaseTwo(nextCube)) { // Arrays.equal(solved, nextCube) for completely solved cube. This like checks for phase 2
-					phaseTwo = true;
-					i=nextDepth.size();
-					System.out.println("Phase 1 Took " + (System.nanoTime()-startTime)/1000000.0 + " ms");
-				} else { 
-					for(int j=0; j<6; j++) { 
-						queue.offer(nextDepth.get(i+j));
-					}
-				}
-			}
-			if(!phaseTwo) {for(int i=0; i<nextCube.length; i++) { nextCube[i] = queue.remove();}} else { queue.clear();}
+	//-------------------------
+	
+	public int[][] generateCordTable() {//this method generates the 3^7 by 18 array
+		int[][] table = new int[(int)Math.pow(3,7)][18]; // the corner twist move table. it represents the 2187 orientations and the 18 represents each move done(u,r,b,l,f,d,u2,r2......)
+		// Correct order matching Phase 2: U, R, F, D, L, B
+		int[] uPerm = {3,0,1,2,4,5,6,7};    int[] uTwist = {0,0,0,0,0,0,0,0}; // 0: U
+		int[] rPerm = {0,1,3,5,4,6,2,7};    int[] rTwist = {0,0,1,2,0,1,2,0}; // 1: R
+		int[] fPerm = {4,1,2,0,5,3,6,7};    int[] fTwist = {2,0,0,1,1,2,0,0}; // 2: F (Moved up!)
+		int[] dPerm = {0,1,2,3,7,4,5,6};    int[] dTwist = {0,0,0,0,0,0,0,0}; // 3: D (Moved up!)
+		int[] lPerm = {1,7,2,3,0,5,6,4};    int[] lTwist = {1,2,0,0,2,0,0,1}; // 4: L (Moved down!)
+		int[] bPerm = {0,2,6,3,4,5,7,1};    int[] bTwist = {0,1,2,0,0,0,1,2}; // 5: B (Moved down!)
 
-		}
-		boolean isSolutionFonud = false;
-		while(!isSolutionFonud) {
-			nextDepth = fido.turnFace(nextCube, moves2, phaseTwo, true); // returns 108 integers
-			for(int i=0; i<nextDepth.size(); i+=6) {
-				List<Integer> list = new ArrayList<>();
-				for(int j=0; j<6; j++) {
-					a = nextDepth.get(i+j);
-					list.add(a);
-					nextCube[j] = a;
+		int[][] list = {uPerm, uTwist,rPerm, rTwist,fPerm, fTwist,dPerm, dTwist,lPerm, lTwist,bPerm, bTwist
+		};
+		for(int cord=0; cord<2187; cord++) {
+			int[] arr = generateCornerArr(cord);
+			for(int moveID = 0; moveID<6; moveID++) {
+				int[] nextMove1 = new int[8];
+				int[] nextMove2 = new int[8];
+				int[] nextMove3 = new int[8];
+				for(int i=0; i<nextMove1.length; i++) {
+					nextMove1[i] = (arr[list[moveID*2][i]] + list[(moveID*2)+1][i]) %3; // u r
 				}
-				if(table.containsKey(list)) { // Arrays.equal(solved, nextCube) for completely solved cube. This like checks for phase 2;
-					String str = map.get(list) + " " + table.get(list);
-					for(int j=0; j<str.length()-2; j++) {
-						if(str.charAt(j)==str.charAt(j+2) && str.charAt(j) != ' ' && str.charAt(j) != '2') {
-							str = str.substring(0, j) + str.charAt(j) + "2" + str.substring(j+3);
-						}
-					}
-					System.out.println("Solution: " + str);
-					isSolutionFonud = true;
-					i=nextDepth.size();
-				} else { 
-					for(int j=0; j<6; j++) { 
-						queue.offer(nextDepth.get(i+j));
-					}
+				for(int i=0; i<nextMove1.length; i++) {
+					nextMove2[i] = (nextMove1[list[moveID*2][i]] + list[(moveID*2)+1][i]) %3; // u2 r2
+				}
+				for(int i=0; i<nextMove1.length; i++) {
+					nextMove3[i] = (nextMove2[list[moveID*2][i]] + list[(moveID*2)+1][i]) %3; // u' r'
 				}
 				
-			}
-			if(!isSolutionFonud) {
-				for(int i=0; i<nextCube.length; i++) { nextCube[i] = queue.remove();}
-			}
+				table[cord][moveID] = generateCornerNumber(nextMove1);
+				table[cord][moveID+6] = generateCornerNumber(nextMove3);
+				table[cord][moveID+12] = generateCornerNumber(nextMove2);
+			}	
 		}
-		System.out.println("Took " + (System.nanoTime()-startTime)/1000000.0 + " ms");
-		/*
-		for(int i=0; i<solution.size(); i++) {
-			if(i%6==0) {
-				System.out.println();
-				System.out.print(moves[i/6] + ": ");
-			}
-			System.out.print(solution.get(i) + " ");
-		}
-		System.out.println();
-		---------------------------------------------------------
-		for(int i=0; i<7; i++) {
-			nextDepth = fido.turnFace(cube, map, moves);
-			int rand = 3;
-			System.out.print(moves[rand] + ": ");
-			rand *=6;
-			for(int j=0; j<6; j++) {
-				cube[j] = nextDepth.get(rand+j);
-				System.out.print(cube[j] + " ");
-			}
-			System.out.println();
-			rand =9;
-			System.out.print(moves[rand] + ": ");
-			rand *= 6;
-			for(int j=0; j<6; j++) {
-				cube[j] = nextDepth.get(rand+j);
-				System.out.print(cube[j] + " ");
-			}
-			System.out.println();
-		}
-		
-			
-			
-		If the U/D color (white or yellow) is on the U or D face,  orientation = 0
-		If the U/D color is on an F or B face,  orientation = 1
-		If the U/D color is on an R or L face,  orientation = 2
-
-		For U/D layer edges (those containing white or yellow):
-		If the white/yellow color is on the U or D face  orientation = 0 (correct).
-		If it’s on a side face (F, B, L, R)  orientation = 1 (flipped).
-
-		For middle (Equator) edges (FR, FL, BL, BR):
-		If the front/back color (Green/Blue) is on F or B  orientation = 0.
-		If the F/B color is on U, D, L, or R  orientation = 1.
-		
-				for(int i=0; i<7; i++) {
-			nextDepth = fido.turnFace(cube, map, moves);
-			int rand = (int)(Math.random()*18);
-			System.out.print(moves[rand] + ") ");
-			rand *=6;
-			for(int j=0; j<6; j++) {
-				cube[j] = nextDepth.get(rand+j);
-				System.out.print(cube[j] + " ");
-			}
-			System.out.println();
-		}
-f2: 111111666, 224224224, 333333333, 244244244, 555555555, 111666666, 
-d: 111111666, 224224555, 333333224, 244244333, 555555244, 661661661, 
-f': 111111223, 226226556, 334332332, 144644633, 555555244, 445661661, 
-d2: 111111223, 226226633, 334332244, 144644556, 555555332, 166166544, 
-u2: 322111111, 144226633, 555332244, 226644556, 334555332, 166166544, 
-b2: 445111111, 644426633, 555332244, 226642551, 233555433, 166166223, 
-d': 445111111, 644426433, 555332633, 226642244, 233555551, 211266366, 
-
-611611611, 555422555, 422333422, 333442333, 442555442, 166166166
-u 611611611, 555422222, 433333522, 444442333, 552555443, 166166166
-		 */
+		return table;
 	}
+	public int[] generateCornerArr(int cord) { //helper method 1
+		int[] arr = new int[8];
+		int sum = 0;
+		for(int i=6; i>=0; i--) {
+			arr[i] = cord%3;
+			sum += arr[i];
+			cord /= 3;
+		}
+		arr[7] = (3-(sum%3))%3; // find the last cordinate
+		return arr;
+	}
+	public int generateCornerNumber(int[] arr) { //helper method 2
+		int cord = 0;
+		for(int i=0; i<7; i++) { // 7 replaces arr.length
+			cord = (cord*3) + arr[i];
+		}
+		return cord;
+	}
+	
+	public int[][] generateEdgeTable() { // these 2 helper method are almost identical to the previous ones, but use the number 2 because there are only 2 orientations for edge pieces compared to 3 for corner pieces
+		int[][] table = new int[(int)Math.pow(2,11)][18]; // there are 12 edges, and 18 moves
+		int[] uPerm = {3,0,1,2,4,5,6,7,8,9,10,11}; int[] uFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] dPerm = {0,1,2,3,4,5,6,7,8,9,10,11}; int[] dFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] rPerm = {8,1,2,3,11,5,6,7,4,9,10,0}; int[] rFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] lPerm = {0,1,10,3,4,5,9,7,8,2,6,11}; int[] lFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] fPerm = {0,9,2,3,4,8,6,7,1,5,10,11}; int[] fFlip = {0,1,0,0,0,1,0,0,1,1,0,0};
+		int[] bPerm = {0,1,2,11,4,5,6,10,8,9,3,7}; int[] bFlip = {0,0,0,1,0,0,0,1,0,0,1,1};
+		int[][] list = {uPerm, uFlip, rPerm, rFlip, bPerm, bFlip, lPerm, lFlip, fPerm, fFlip, dPerm, dFlip};
+		for(int cord = 0; cord<2048; cord++) {
+			int[] arr = generateEdgeArr(cord);
+			for(int moveID =0; moveID<6; moveID++) {
+				int[] nextMove1 = new int[12];
+				int[] nextMove2 = new int[12];
+				int[] nextMove3 = new int[12];
+				for(int i=0; i<nextMove1.length; i++) { // we have to use 3 loops for both the edge and corner table because elements in mextMove2 and 3 rely on elements from nextMove 1/2 not yet generated
+					nextMove1[i] = (arr[list[moveID*2][i]] + list[(moveID*2)+1][i]) % 2;
+				}
+				for(int i=0; i<nextMove2.length; i++) {
+					nextMove2[i] = (nextMove1[list[moveID*2][i]] + list[(moveID*2)+1][i]) % 2;
+				}
+				for(int i=0; i<nextMove3.length; i++) {
+					nextMove3[i] = (nextMove2[list[moveID*2][i]] + list[(moveID*2)+1][i]) % 2;
+				}
+				table[cord][moveID] = generateEdgeNumber(nextMove1);
+				table[cord][moveID+6] = generateEdgeNumber(nextMove3);
+				table[cord][moveID+12] = generateEdgeNumber(nextMove2);
+			}
+		}
+		return table;
+	}
+	public int[] generateEdgeArr(int cord) { // helper method 1
+		int[] arr = new int[12];
+		int sum =0;
+		for(int i=10; i>=0; i--) {
+			arr[i] = cord%2;
+			sum += arr[i];
+			cord /=2;
+		}
+		arr[11] = sum%2; // 12th edge is forced again, but the equation is much simpiler
+		return arr;
+	}
+	public int generateEdgeNumber(int[] arr) { // helper method 2
+		int cord = 0;
+		for(int i=0; i<arr.length-1; i++) {
+			cord = (cord*2) + arr[i];
+		}
+		return cord;
+	}
+
+	public int[][] generateSliceTable(){ // this method keeps track of the edge pieces in the middle row
+		int[][] table = new int[495][18]; // 12 choose 4 = 495
+		int[] uPerm = {3,0,1,2,4,5,6,7,8,9,10,11}; int[] uFlip = {0,0,0,0,0,0,0,0,0,0,0,0}; // exact same numbers as edge list
+		int[] dPerm = {0,1,2,3,4,5,6,7,8,9,10,11}; int[] dFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] rPerm = {8,1,2,3,11,5,6,7,4,9,10,0}; int[] rFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] lPerm = {0,1,10,3,4,5,9,7,8,2,6,11}; int[] lFlip = {0,0,0,0,0,0,0,0,0,0,0,0};
+		int[] fPerm = {0,9,2,3,4,8,6,7,1,5,10,11}; int[] fFlip = {0,1,0,0,0,1,0,0,1,1,0,0};
+		int[] bPerm = {0,1,2,11,4,5,6,10,8,9,3,7}; int[] bFlip = {0,0,0,1,0,0,0,1,0,0,1,1};
+		int[][] list = {uPerm, uFlip, rPerm, rFlip, bPerm, bFlip, lPerm, lFlip, fPerm, fFlip, dPerm, dFlip};
+		for(int cord =0; cord<495; cord++) {
+			int[] arr = generateSliceArr(cord);
+			for(int moveID=0; moveID <6; moveID++) {
+				int[] nextMove1 = new int[12];
+				int[] nextMove2 = new int[12];
+				int[] nextMove3 = new int[12];
+				for(int i=0; i<12; i++) {
+					nextMove1[i] = arr[list[moveID*2][i]];
+				}
+				for(int i=0; i<12; i++) {
+					nextMove2[i] = nextMove1[list[moveID*2][i]];
+				}
+				for(int i=0; i<12; i++) {
+					nextMove3[i] = nextMove2[list[moveID*2][i]];
+				}
+				table[cord][moveID] = generateSliceNumber(nextMove1); // regular move (u)
+				table[cord][moveID+6] = generateSliceNumber(nextMove3); // prime move (u')
+				table[cord][moveID+12] = generateSliceNumber(nextMove2); // double move (u2)
+			}
+		}
+		return table;
+	}
+	public int[] generateSliceArr(int cord) {// a edge slot get 1 if it does not have a up/down piece
+		int[] arr = new int[12];
+		int k=3; // represents the 4 edges 3,2,1,0
+		for(int n=11; n>=0; n--) {
+			if(k>=0) {
+				int x = choose(n,k);
+				if(cord >= x) {
+					cord -= x;
+					arr[n] =0;
+				} else {
+					arr[n] =1;
+					k--;
+				}
+			} else {
+				arr[n] =0;
+			}
+		}
+		return arr;
+	}
+	public int generateSliceNumber(int[] arr) {
+		int s=0;
+		int k=3; // 3,2,1,0 again
+		for(int n=11; n>=0; n--) {
+			if(k>=0) {
+				if(arr[n] == 1) {
+					k--;
+				} else {
+					s+= choose(n,k);
+				}
+			}
+		}
+		return s;
+	}
+	public int choose(int n, int k) {
+		if(n < k || k < 0) {return 0;}
+		if(k==0 || n==k) {return 1;}
+		long x = 1; // a long replaces a int to prevent overflow happening in testing
+		for(int i=0; i<k; i++) {
+			x = x*(n-i)/(i+1); // a 1 was being used with a 1. This multiplies the exact same number on every iteration
+		}
+		return (int)x;
+	}
+		
+	int[][] cordTable = generateCordTable();
+	int[][] edgeTable = generateEdgeTable();
+	int[][] sliceTable = generateSliceTable();
+	
+	public byte[][] generateTwistsFlips(){
+		byte[] twists = new byte[2187*495];
+		byte[] flips = new byte[2048*495];
+		for(int i=1; i<twists.length; i++) {twists[i] =-1;}
+		for(int i=1; i<flips.length; i++) {flips[i] =-1;}
+		int depth =0;
+		int statesFilled =1; // index zero is depth zero - we already have done that one
+		
+		while(statesFilled < twists.length) {
+			boolean added = false;
+			for(int i=0; i<twists.length; i++) {
+				if(twists[i] == depth) {
+					int currentCord = i/495;
+					int currentSlide = i%495;
+					for(int moveID =0; moveID < 18; moveID++) {
+						int nextCord = cordTable[currentCord][moveID];
+						int nextSlice = sliceTable[currentSlide][moveID];
+						int nextIndex = (nextCord*495) + nextSlice;
+						if(twists[nextIndex] == -1) {
+							twists[nextIndex] = (byte)(depth+1); // we start at zero - everything is 1 behind
+							statesFilled++;
+							added=true;
+						}
+					}
+				}
+			}
+			if(!added) {break;}
+			depth++;
+		}
+		depth =0;
+		statesFilled =1;
+		while(statesFilled < flips.length) {
+			boolean added = false;
+			for(int i=0; i<flips.length; i++) {
+				if(flips[i] == depth) {
+					int currentEdge = i/495;
+					int currentSlide = i%495;
+					for(int moveID =0; moveID < 18; moveID++) {
+						int nextEdge = edgeTable[currentEdge][moveID];
+						int nextSlice = sliceTable[currentSlide][moveID];
+						int nextIndex = (nextEdge*495) + nextSlice;
+						if(flips[nextIndex] == -1) {
+							flips[nextIndex] = (byte)(depth+1); // we start at zero - everything is 1 behind
+							statesFilled++;
+							added = true;
+						}
+					}
+				}
+			}
+			if(!added) {break;}
+			depth++;
+		}
+		byte[][] arr = {twists, flips};
+		return arr;
+	}
+		
+	byte[][] arr = generateTwistsFlips();
+	byte[] twists = arr[0];
+	byte[] flips = arr[1];
+	
+	public int getDistance(int cord, int edge, int slide) {
+		int twistDistance = twists[(cord*495) + slide];
+		int flipDistance = flips[(edge*495) + slide];
+		if(twistDistance >= flipDistance) {return twistDistance;}
+		return flipDistance;
+	}
+	public boolean searchPhase1(int cord, int edge, int slide, int currentDepth, int limit, int[] path, int lastMove) {
+		int h = getDistance(cord, edge, slide);
+		if(h==0) {return true;}
+		if(currentDepth + h > limit) {
+			return false;
+		}
+		for(int moveID =0; moveID < 18; moveID++) {
+			if(isMoveBanned(moveID, lastMove)) {
+				continue;
+			}
+			int nextCord = cordTable[cord][moveID];
+			int nextEdge = edgeTable[edge][moveID];
+			int nextSlide = sliceTable[slide][moveID];
+			
+			path[currentDepth] = moveID;
+			if(searchPhase1(nextCord, nextEdge, nextSlide, currentDepth+1, limit, path, moveID)) { return true;}
+		}
+		return false;
+	}
+	public boolean isMoveBanned(int moveID, int lastMove) {
+	    if (lastMove == -1) return false;
+	    
+	    int currentFace = moveID % 6;
+	    int lastFace = lastMove % 6;
+	    
+	    if (currentFace == lastFace) {
+	        return true;
+	    }
+	    
+
+	    if (lastFace - currentFace == 3) {
+	        return true;
+	    }
+	    
+	    return false;
+	}
+	
+	static int[] solutionPath = new int[30];
+	static int phase1Depth;
+	public String solvePhase1(int startCord, int startEdge, int startSlide) {
+		String[] moves = {"u", "r", "b", "l", "f", "d", "u'", "r'", "b'", "l'", "f'", "d'", "u2", "r2", "b2", "l2", "f2", "d2"};
+
+		String solution ="";
+		
+		for(int depth =0; depth <=12; depth++) {
+			if(searchPhase1(startCord, startEdge, startSlide, 0, depth, solutionPath, -1)) {
+				phase1Depth = depth;
+				for(int i=0; i<depth; i++) {
+					int moveID = solutionPath[i];
+					solution += moves[moveID];
+					System.out.print(moves[moveID] + " ");
+				}
+				System.out.println();
+				break;
+			}
+		}
+		return solution;// this is the phase 1 solution 
+	}
+
+	// phase 2 methods -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+	int[] phase2Moves = {0, 6, 12, 3, 9, 15, 13, 14, 16, 17};
+	int[][] cpMoveTable = new int[40320][18];
+	int[][] epMoveTable = new int[40320][18];
+	int[][] sliceMoveTable = new int[24][18];
+	public void generateCPMoveTable() {
+		for(int state =0; state<40320; state++) { // 8! 
+			int[] cornerArr = intToPermutation(state);
+			for(int moveID =0; moveID < 18; moveID ++) {
+				int[] newCornerArr = applyCornerMove(cornerArr, moveID);
+				cpMoveTable[state][moveID] = permutationToInt(newCornerArr);
+			}
+		}
+	}
+	public void generateEPMoveTable() {
+		for(int state =0; state < 40320; state++) {
+			int[] edgeArr = intToPermutation(state);
+			int[] edgeArrExtended = new int[12];
+			for(int i=0; i<edgeArr.length; i++) {edgeArrExtended[i] = edgeArr[i];}
+			for(int i=8; i<=11; i++) {edgeArrExtended[i] = i;}
+			for(int moveID =0; moveID < 18; moveID++) {
+				int[] newEdgeArrExtended = applyEdgeMove(edgeArrExtended, moveID);
+				int[] newEdgeArr = new int[8];
+				for(int i=0; i<newEdgeArr.length; i++) {
+					newEdgeArr[i] = newEdgeArrExtended[i];
+				}
+
+	            boolean valid = true;
+	            boolean[] seen = new boolean[8];
+	            for (int val : newEdgeArr) {
+	                if (val<0 || val>7 || seen[val]) {
+	                    valid = false;
+	                    break;
+	                }
+	                seen[val] = true;
+	            }
+	            
+	            if (valid) {
+	                epMoveTable[state][moveID] = permutationToInt(newEdgeArr);
+	            } else {
+	                epMoveTable[state][moveID] = -1; // Invalid transition for non-Phase-2 moves
+	            }
+			}
+		}
+	}
+	public int[] intToPermutation(int state) {
+		int[] perm = new int[8];
+		int[] factorials = {5040, 720, 120, 24, 6, 2, 1};
+		ArrayList<Integer> available = new ArrayList<>();
+		for(int i=0; i<8; i++) {
+			available.add(i);
+		}
+		for(int i=0; i<7; i++) {
+			int index = state/factorials[i];
+			perm[i] = available.remove(index);
+			state = state % factorials[i];
+		}
+		perm[7] = available.get(0);
+		return perm;
+	}
+	public int permutationToInt(int[] corners) {
+		int coordinate = 0;
+		int[] factorials = {5040, 720, 120, 24, 6, 2, 1, 1};
+		for(int i=0; i<7; i++) {
+			int smaller =0;
+			for(int j=i+1; j<8; j++) {
+				if(corners[j]<corners[i]) {
+					smaller++;
+				}
+			}
+			coordinate += (smaller*factorials[i]);
+		}
+		return coordinate;
+	}
+	public int[] SliceIntToPerm(int state) {
+	    int[] perm = new int[4];
+	    int[] factorials = {6, 2, 1};
+	    ArrayList<Integer> available = new ArrayList<>();
+	    
+	    for(int i = 8; i <= 11; i++) {
+	        available.add(i);
+	    }
+	    
+	    for(int i = 0; i < 3; i++) {
+	        int index = state / factorials[i];
+	        perm[i] = available.remove(index);
+	        state = state % factorials[i];
+	    }
+	    perm[3] = available.get(0);
+	    return perm;
+	}
+	public int slicePermToInt(int[] slice) {
+	    int coordinate = 0;
+	    int[] factorials = {6, 2, 1, 1};
+	    
+	    for(int i = 0; i < 3; i++) {
+	        int smaller = 0;
+	        for(int j = i + 1; j < 4; j++) {
+	            if(slice[j] < slice[i]) {
+	                smaller++;
+	            }
+	        }
+	        coordinate += (smaller * factorials[i]);
+	    }
+	    return coordinate;
+	}
+
+	public int[] applyCornerMove(int[] currentCorners, int moveID) {
+		int[] newCorners = new int[8];
+		int face = moveID%6; // handles double/prime moves
+		int[] movePermutation = getCornerPermutationForMove(face);
+		int count =1;
+		if(moveID >= 12 && moveID < 18) {count = 2;} else if(moveID >= 6 && moveID < 12) {count = 3;}
+		int[] temp = new int[currentCorners.length];
+		for(int i=0; i<temp.length; i++) {temp[i] = currentCorners[i];}
+		for(int i=0; i<count; i++) {
+			for(int j=0; j<8; j++) {
+				newCorners[j] = temp[movePermutation[j]];
+			}
+			for(int k=0; k<temp.length; k++) {temp[k] = newCorners[k];}
+		}
+		return newCorners;
+	}
+	public int[] applyEdgeMove(int[] currentEdges, int moveID) {
+		int[] newEdges = new int[12];
+		int baseFace = moveID%6;
+		int[] movePermutation = getEdgePermutationForMove(baseFace);
+		int turnCount =1;
+		if(moveID >= 6 && moveID <=11) {turnCount =3;} else if(moveID >= 12 && moveID <= 17) {turnCount =2;}
+		int[] temp = new int[12];
+		for(int i = 0; i < 12; i++) { temp[i] = currentEdges[i]; }
+		
+		for(int c = 0; c < turnCount; c++) {
+			for(int j = 0; j < 12; j++) {
+				newEdges[j] = temp[movePermutation[j]];
+			}
+			for(int j = 0; j < 12; j++) {
+				temp[j] = newEdges[j];
+			}
+		}
+		return newEdges;
+	}
+	public int[] getCornerPermutationForMove(int moveID) {// helper
+		int[] U_PERM = {3, 0, 1, 2, 4, 5, 6, 7};
+		int[] R_PERM = {0, 2, 6, 3, 4, 1, 5, 7};
+		int[] F_PERM = {0, 1, 3, 4, 5, 2, 6, 7};
+		int[] D_PERM = {0, 1, 2, 3, 7, 4, 5, 6};
+		int[] L_PERM = {7, 1, 2, 0, 3, 5, 6, 4};
+		int[] B_PERM = {1, 6, 2, 3, 4, 5, 7, 0};
+		int[][] list = {U_PERM, R_PERM, F_PERM, D_PERM, L_PERM, B_PERM};
+		if (moveID <= 5) {
+			return list[moveID];
+	    } else {
+	        // does nothing
+	        return new int[]{0, 1, 2, 3, 4, 5, 6, 7}; 
+	    }
+	}
+	public int[] getEdgePermutationForMove(int moveID) {
+	    int[] U_EDGE = {3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11};
+	    int[] D_EDGE = {0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11};
+	    int[] R_EDGE = {0, 9, 2, 3, 4, 11, 6, 7, 8, 5, 10, 1};
+	    int[] F_EDGE = {0, 1, 8, 3, 10, 5, 6, 7, 4, 9, 2, 11};
+	    int[] L_EDGE = {11, 1, 2, 8, 9, 5, 6, 7, 0, 4, 10, 3};
+	    int[] B_EDGE = {0, 1, 2, 10, 4, 5, 9, 7, 8, 6, 3, 11};
+	    int[][] list = {U_EDGE, R_EDGE, F_EDGE, D_EDGE, L_EDGE, B_EDGE};
+	    
+	    if(moveID <= 5) {
+	        return list[moveID];
+	    }
+	    return new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+	}
+	public int getPermCords(int[] perm) {
+		int coord =0;
+		int[] factorials = {5040, 720, 120, 24, 6, 2, 1, 1};
+		for(int i=0; i<7; i++) {
+			int count =0;
+			for(int j=i+i; j<8; j++) {
+				if(perm[j] < perm[i]) {count++;}
+			}
+			coord += (count * factorials[i]);
+		}
+		return coord;
+	}	
+	
+	byte[] cpPruningTable = new byte[40320];
+	byte[] epPruningTable = new byte[40320];
+	byte[] slicePruningTable = new byte[24];
+	
+	public void generateCPPruningTable() {
+		cpPruningTable[0]=0;
+		for(int i=1; i<cpPruningTable.length; i++) {
+			cpPruningTable[i]=-1;
+		}
+		int depth =0;
+		int filled =1;
+		while(filled<40320) {
+			boolean added = false;
+			for(int state = 0; state<40320; state++) {
+				if(cpPruningTable[state] == depth) {
+					for(int moveID : phase2Moves) {
+						int nextState = cpMoveTable[state][moveID];
+						if(cpPruningTable[nextState] == -1) {
+							cpPruningTable[nextState] = (byte)(depth+1);
+							filled++;
+							added = true;
+						}
+					}
+				}
+			}
+			if(!added) {break;}
+			depth++;
+		}
+		
+	}
+	public void generateEPPruningTable() {
+		epPruningTable[0]=0;
+		for(int i=1; i<epPruningTable.length; i++) {
+			epPruningTable[i]=-1;
+		}
+		int depth =0;
+		int filled =1;
+		while(filled<40320) {
+			boolean added = false;
+			for(int state = 0; state<40320; state++) {
+				if(epPruningTable[state] == depth) {
+					for(int moveID : phase2Moves) {
+						int nextState = epMoveTable[state][moveID];
+						if(epPruningTable[nextState] == -1) {
+							epPruningTable[nextState] = (byte)(depth+1);
+							filled++;
+							added = true;
+						}
+					}
+				}
+			}
+			if(!added) {break;}
+			depth++;
+		}
+	}
+	public void generateSliceTables() {
+	    
+	    for(int state = 0; state < 24; state++) {
+	        int[] slice = SliceIntToPerm(state);
+	        int[] fullEdges = {0, 1, 2, 3, 4, 5, 6, 7, slice[0], slice[1], slice[2], slice[3]};
+	        for(int moveID = 0; moveID < 18; moveID++) {
+	            int[] newFull = applyEdgeMove(fullEdges, moveID);
+	            int[] newSlice = {newFull[8], newFull[9], newFull[10], newFull[11]};
+	            sliceMoveTable[state][moveID] = slicePermToInt(newSlice);
+	        }
+	    }
+	    
+	    for(int i = 0; i < 24; i++) slicePruningTable[i] = -1;
+	    slicePruningTable[0] = 0;
+	    
+	    int depth = 0;
+	    int filled = 1;
+	    int[] phase2Moves = {0, 6, 12, 3, 9, 15, 13, 14, 16, 17};
+	    
+	    while(filled < 24) {
+	    	boolean added = false;
+	        for(int state = 0; state < 24; state++) {
+	            if(slicePruningTable[state] == depth) {
+	                for(int moveID : phase2Moves) {
+	                    int nextState = sliceMoveTable[state][moveID];
+	                    if(slicePruningTable[nextState] == -1) {
+	                        slicePruningTable[nextState] = (byte)(depth + 1);
+	                        filled++;
+	                        added = true;
+	                    }
+	                }
+	            }
+	        }
+	        if(!added) {break;}
+	        depth++;
+	    }
+	}
+	
+	String[] moveNames = {"U", "R", "F", "D", "L", "B", "U'", "R'", "F'", "D'", "L'", "B'", "U2", "R2", "F2", "D2", "L2", "B2"};
+	int[]currentSolution = new int[18];
+	
+	public String solvePhase2(int cp, int ep, int slice) {
+		solution = "";
+	    currentSolution = new int[20]; 
+	    for (int maxDepth = 0; maxDepth < 20; maxDepth++) {
+	        if (search(cp, ep, slice, maxDepth, 0, -1)) {
+	            return solution; // soution found
+	        }
+	    }
+	    System.out.println("Phase 2 failed: No solution found within depth limit.");
+		return "Error";
+	}
+	public static String solution = "";
+	public boolean search(int cpState, int epState, int sliceState, int maxDepth, int currentDepth, int lastMove) {
+	    if (currentDepth == maxDepth) {
+	        if (cpState == 0 && epState == 0 && sliceState == 0) { 
+	            printSolution(maxDepth);
+	            return true;
+	        }
+	        return false;
+	    }
+	    
+	    int cpDist = cpPruningTable[cpState];
+	    int epDist = epPruningTable[epState];
+	    int sliceDist = slicePruningTable[sliceState];
+	    
+	    if (cpDist == -1 || epDist == -1 || sliceDist == -1) {
+	        return false;
+	    }
+	    
+	    int maxDist = Math.max(cpDist, Math.max(epDist, sliceDist));
+	    
+	    if (maxDist > (maxDepth - currentDepth)) {
+	        return false; 
+	    }
+	    int[] phase2Moves = {0, 6, 12, 3, 9, 15, 13, 14, 16, 17};
+	    for (int moveID =0; moveID< phase2Moves.length; moveID++) {
+	        int move = phase2Moves[moveID];
+	        
+	    	if(isMoveBanned(move, lastMove)) {continue;}
+	        
+	        currentSolution[currentDepth] = move;
+	        
+	        int nextCP = cpMoveTable[cpState][move];
+	        int nextEP = epMoveTable[epState][move];
+	        int nextSlice = sliceMoveTable[sliceState][move];
+	        
+	        if (search(nextCP, nextEP, nextSlice, maxDepth, currentDepth + 1, move)) {
+	            return true;
+	        }
+	    }
+	    return false;
+	}
+	public void printSolution(int length) {
+        System.out.print("Solution: ");
+	    for (int i = 0; i < length; i++) {
+	        int moveID = currentSolution[i];
+	        System.out.print(moveNames[moveID] + " ");
+	        solution += moveNames[moveID] + " ";
+	    }
+	    System.out.println();
+	}
+	
+	/*
+		if(x==0||x==6||x==12) {
+			list.add(0);list.add(6);list.add(12);
+		}
+		if(x==1||x==7||x==13) {
+			list.add(1);list.add(7);list.add(13);
+		}
+		if(x==2||x==8||x==14) {
+			list.add(2);list.add(8);list.add(14);list.add(4);list.add(10);list.add(16);
+		}
+		if(x==3||x==9||x==15) {
+			list.add(3);list.add(9);list.add(15);list.add(1);list.add(7);list.add(13);
+		}
+		if(x==4||x==10|x==16) {
+			list.add(4);list.add(10);list.add(16);
+		}
+		if(x==5||x==11||x==17) {
+			list.add(5);list.add(11);list.add(17);list.add(0);list.add(6);list.add(12);
+		}
+		
+		
+		for(int nextMove=0; nextMove<18; nextMove++) {
+			if(isMoveBanned[previousMove][nextMove]) { // i equals next move, j equals previous move index with respect to moves array
+				continue;
+			}
+		}
+		*/	
+	
+	/*
+	 boolean[][] isMoveBanned = { // the rows correspond to moves array. If (row) was the previousMove, do not do moves corrsponding. for Example, if u was just done, do no U moves.  some need extra.
+			{true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false},
+			{false, true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false},
+			{false, false, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false}, // here extra
+			{false, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false, false}, // here extra
+			{false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false, true, false},
+			{true, false, false, false, false, true, true, false, false, false, false, true, true, false, false, false, false, true}, // here extra
+			{true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false},
+			{false, true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false},
+			{false, false, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false}, // here extra
+			{false, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false, false}, // here extra
+			{false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false, true, false},
+			{true, false, false, false, false, true, true, false, false, false, false, true, true, false, false, false, false, true}, // here extra
+			{true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false},
+			{false, true, false, false, false, false, false, true, false, false, false, false, false, true, false, false, false, false},
+			{false, false, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false}, // here extra
+			{false, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false, false}, // here extra
+			{false, false, false, false, true, false, false, false, false, false, true, false, false, false, false, false, true, false},
+			{true, false, false, false, false, true, true, false, false, false, false, true, true, false, false, false, false, true}, // here extra
+	 */
+	
+	/*
+	 * public static void main(String[] args) { // imput the moves into the scramble moves array as numbers
+	    PruneTable fido = new PruneTable();
+
+	    fido.generateCPMoveTable();
+	    fido.generateEPMoveTable();
+	    fido.generateSliceTables();
+	    fido.generateCPPruningTable();
+	    fido.generateEPPruningTable();
+	    int[][][] tables = fido.copyMoveTables();
+	    int[][] copyCordTable = tables[0];
+	    int[][] copyEdgeTable = tables[1];
+	    int[][] copySliceTable = tables[2];
+
+	    int[] scrambleMoves = {1, 4}; //input my scramble (this would be 'r' , 'f')
+	    
+	    int currentCP = 0;   // 0 to 40320  
+	    int currentEP = 0;   // 0 to 40320
+	    int currentSlicePerm = 0;   // 0 to 24
+	    int initialCord = 0;   // 0 to 2187
+	    int initialEdge = 0;   // 0 to 2048
+	    int initialSlice = 0; // 0 to 495
+
+	    for (int moveID : scrambleMoves) {
+	        currentCP = fido.cpMoveTable[currentCP][moveID];
+	        currentEP = fido.epMoveTable[currentEP][moveID];
+	        currentSlicePerm = fido.sliceMoveTable[currentSlicePerm][moveID];
+	    }
+
+
+	    String phase1 = fido.solvePhase1(initialCord, initialEdge, initialSlice);
+	    
+	    for (int i = 0; i < fido.phase1Depth; i++) {
+	        int moveID = fido.solutionPath[i];
+	        currentCP = fido.cpMoveTable[currentCP][moveID];
+	        currentEP = fido.epMoveTable[currentEP][moveID];
+	        currentSlicePerm = fido.sliceMoveTable[currentSlicePerm][moveID];
+	    }
+
+	    fido.solvePhase2(currentCP, currentEP, currentSlicePerm);
+	}
+	*/
 }
+
+
