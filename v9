@@ -4,8 +4,6 @@
 import java.util.*;
 public class Solver {
 	public String runner(int cp, int ep, int sp, int cord, int edge, int slice) {
-	    //If your tables are already generated on startup,
-	    // keep these generation lines commented out so runner() stays fast!
 	    /*
 	    generateCPMoveTable();
 	    generateEPMoveTable();
@@ -22,7 +20,6 @@ public class Solver {
 	    int initialSlice = slice;
 
 	    String phase1Moves = solvePhase1(initialCord, initialEdge, initialSlice);
-	    
 	    for (int i = 0; i < phase1Depth; i++) {
 	        int moveID = solutionPath[i];
 	        currentCP = cpMoveTable[currentCP][moveID];
@@ -36,7 +33,7 @@ public class Solver {
 	    return finalSolution;
 	}
 	public int[][][] copyMoveTables(){
-		//all arrays should be a rectangle(no jagged)
+		//all arrays should be a rectangle(no jagged arr)
 		int[][] copyCordTable = new int[cordTable.length][cordTable[0].length];
 		int[][] copyEdgeTable = new int[edgeTable.length][edgeTable[0].length];
 		int[][] copySliceTable = new int[sliceTable.length][sliceTable[0].length];
@@ -62,7 +59,6 @@ public class Solver {
 	
 	public int[][] generateCordTable() {//this method generates the 3^7 by 18 array
 		int[][] table = new int[(int)Math.pow(3,7)][18]; // the corner twist move table. it represents the 2187 orientations and the 18 represents each move done(u,r,b,l,f,d,u2,r2......)
-		// Correct order matching Phase 2: U, R, F, D, L, B
 		int[] uPerm = {3,0,1,2,4,5,6,7};    int[] uTwist = {0,0,0,0,0,0,0,0}; // 0: U
 		int[] rPerm = {0,1,3,5,4,6,2,7};    int[] rTwist = {0,0,1,2,0,1,2,0}; // 1: R
 		int[] fPerm = {4,1,2,0,5,3,6,7};    int[] fTwist = {2,0,0,1,1,2,0,0}; // 2: F (Moved up!)
@@ -511,7 +507,7 @@ public class Solver {
 		return newEdges;
 	}
 	public int[] getCornerPermutationForMove(int moveID) {// helper
-		int[] U_PERM = {3, 0, 1, 2, 4, 5, 6, 7};
+		int[] U_PERM = {3, 0, 1, 2, 4, 5, 6, 7}; // code with arrays like this tells us the final position after said move. For example, at index 0 the piece that ends up in slot zero is the one that comes from slot 3
 		int[] R_PERM = {0, 2, 6, 3, 4, 1, 5, 7};
 		int[] F_PERM = {0, 1, 3, 4, 5, 2, 6, 7};
 		int[] D_PERM = {0, 1, 2, 3, 7, 4, 5, 6};
@@ -656,7 +652,7 @@ public class Solver {
 	            return solution; // soution found
 	        }
 	    }
-	    System.out.println("Phase 2 failed: No solution found within depth limit.");
+	    System.out.println("No solution found within depth limit.");
 		return "Error";
 	}
 	public static String solution = "";
@@ -709,7 +705,7 @@ public class Solver {
 	    }
 	    System.out.println();
 	}
-	
+// extra old code from brainstorming	
 	/*
 		if(x==0||x==6||x==12) {
 			list.add(0);list.add(6);list.add(12);
